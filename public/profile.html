@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaVerse - The Nexus</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --glow-purple: #8a2be2;
+            --glow-orange: #ff8c00;
+            --background-dark: #0c0a18;
+            --card-dark: rgba(23, 19, 44, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-dark);
+            color: #e0e0e0;
+            overflow-x: hidden;
+            cursor: crosshair;
+        }
+        
+        /* --- NEW: Screen Effects (Scanlines & Vignette) --- */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            z-index: 9999;
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.5); /* Vignette */
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+
+        /* --- Animations & Effects --- */
+        @keyframes fade-in-down { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 15px var(--glow-purple), 0 0 5px var(--glow-purple) inset; } 50% { box-shadow: 0 0 25px var(--glow-purple), 0 0 8px var(--glow-purple) inset; } }
+        @keyframes border-glow { 100% { transform: rotate(360deg); } }
+        
+        .xp-bar-fill {
+            background: linear-gradient(90deg, var(--glow-purple), var(--glow-orange));
+            box-shadow: 0 0 10px var(--glow-orange);
+            transition: width 2s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .selection-card {
+            background-color: var(--card-dark);
+            border: 1px solid rgba(138, 43, 226, 0.4);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease-out;
+            position: relative;
+            overflow: hidden;
+            transform: perspective(1000px);
+        }
+        
+        .selection-card:before, .selection-card:after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-out;
+        }
+        
+        .selection-card:before {
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 140, 0, 0.15), transparent 40%);
+        }
+
+        /* --- NEW: Animated Border --- */
+        .selection-card:after {
+            width: 200%; height: 200%;
+            top: -50%; left: -50%;
+            background: conic-gradient(
+                transparent,
+                rgba(255, 140, 0, 0.5),
+                transparent 30%
+            );
+        }
+
+        .selection-card:hover {
+            transform: translateY(-12px) scale(1.03) rotateX(2deg);
+            border-color: var(--glow-orange);
+            box-shadow: 0 15px 40px rgba(255, 140, 0, 0.25);
+        }
+        .selection-card:hover:before { opacity: 1; }
+        .selection-card:hover:after { opacity: 1; animation: border-glow 4s linear infinite; }
+        .selection-card:hover .icon { transform: scale(1.15); filter: drop-shadow(0 0 10px var(--glow-orange)); }
+        .selection-card .icon { transition: transform 0.3s ease-out; }
+        
+        .animate-card { opacity: 0; transform: translateY(50px); animation: fade-in-up 0.6s forwards cubic-bezier(0.25, 1, 0.5, 1); }
+        
+        /* Player Avatar */
+        .player-avatar { animation: pulse-glow 3s infinite ease-in-out; }
+
+        /* --- Updated Cartoon Tooltip Styles --- */
+        .cartoon-tooltip {
+            position: fixed;
+            z-index: 10000; /* Above scanlines */
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: scale(0.8) translateY(20px);
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .cartoon-tooltip.visible {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        .tooltip-note {
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #1a1a1a;
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid #333;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+            min-width: 300px;
+        }
+        
+        .tooltip-note::after {
+            content: '';
+            position: absolute;
+            bottom: 10px;
+            left: -15px;
+            border-width: 10px;
+            border-style: solid;
+            border-color: transparent white transparent transparent;
+        }
+
+        .code-keyword { color: #d73a49; }
+        .code-string { color: #032f62; }
+        .code-comment { color: #6a737d; }
+        .code-class { color: #6f42c1; }
+        .code-method { color: #005cc5; }
+        .code-number { color: #df5d00; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <canvas id="particle-canvas" class="fixed top-0 left-0 w-full h-full z-0"></canvas>
+
+    <div class="relative z-10 min-h-screen flex flex-col">
+        <header class="p-6 flex justify-between items-center z-20 animate-fade-in-down" style="animation-duration: 0.8s;">
+            <a href="#" class="text-3xl font-bold font-orbitron tracking-widest text-white transition-all duration-300 hover:text-orange-400" style="text-shadow: 0 0 10px var(--glow-purple);">JavaVerse</a>
+            <nav class="hidden md:flex items-center space-x-8">
+                <a href="#" class="text-lg text-orange-400 font-bold">Nexus</a>
+                <a href="#" class="text-gray-300 hover:text-orange-400 transition-colors duration-300 text-lg">Leaderboards</a>
+                <a href="#" class="text-gray-300 hover:text-orange-400 transition-colors duration-300 text-lg">Profile</a>
+                <a href="index.html" class="bg-purple-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-purple-500/30">Log Out</a>
+            </nav>
+            <button class="md:hidden text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
+        </header>
+
+        <main class="flex-grow container mx-auto px-6 py-12">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+                <div class="lg:col-span-2">
+                    <h1 id="main-title" class="text-4xl md:text-5xl font-bold font-orbitron uppercase text-white animate-card" style="animation-delay: 0.1s;">Command Center</h1>
+                    <p class="text-xl text-gray-400 mt-2 mb-10 animate-card" style="animation-delay: 0.2s;">Select your mission, Coder. Your path to mastery awaits.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 0.3s;" data-key="quests">
+                            <div class="icon text-purple-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Quest Log</h3>
+                            <p class="text-gray-300">Follow a structured path. Complete guided quests to learn Java concepts from the ground up and earn XP.</p>
+                        </div>
+                        
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 0.4s;" data-key="arena">
+                            <div class="icon text-orange-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Code Arena</h3>
+                            <p class="text-gray-300">Hone your skills. Solve challenges, compete in timed battles against others, and climb the leaderboard rankings.</p>
+                        </div>
+
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 0.5s;" data-key="streams">
+                            <div class="icon text-cyan-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Data Streams</h3>
+                            <p class="text-gray-300">Access the archives. Watch curated video lectures and tutorials covering advanced topics and strategies.</p>
+                        </div>
+
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 0.6s;" data-key="forge">
+                            <div class="icon text-red-500 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.41.59 2 2 0 0 0 1.41-.59l4.52-4.51a2 2 0 0 0-2.83-2.83l-1.17 1.17-1.17-1.17a2 2 0 0 0-2.83 2.83l4.51 4.51z"></path><path d="M10 10.5 3.5 17a2 2 0 0 0 2.83 2.83l6.5-6.5"></path><path d="m14 7.5 6.5-6.5a2 2 0 0 1 2.83 2.83L17 10.5"></path></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Project Forge</h3>
+                            <p class="text-gray-300">Build your legend. Tackle large-scale projects, contribute to team builds, and create portfolio-worthy applications.</p>
+                        </div>
+
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 0.7s;" data-key="game1">
+                            <div class="icon text-green-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Code Race</h3>
+                            <p class="text-gray-300">Engage in the first challenge. Test your basic knowledge in a fun, interactive game. (Links to game1.html)</p>
+                        </div>
+                        
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 0.8s;" data-key="game2">
+                            <div class="icon text-yellow-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Syntax Fight </h3>
+                            <p class="text-gray-300">The next level of simulation. Apply intermediate concepts under pressure. (Links to game2.html)</p>
+                        </div>
+
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 0.9s;" data-key="game3">
+                            <div class="icon text-blue-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 17 17 23 15.79 13.88"></polyline></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Code verifyer</h3>
+                            <p class="text-gray-300">The final test. Master advanced logic and prove your skills. (Links to game3.html)</p>
+                        </div>
+                        
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 1.0s;" data-key="reels">
+                            <div class="icon text-pink-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Reels</h3>
+                            <p class="text-gray-300">Watch short, engaging video clips and tutorials on Java tricks, tips, and quick-builds.</p>
+                        </div>
+
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 1.1s;" data-key="ai-assignment">
+                            <div class="icon text-teal-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">AI Assignment</h3>
+                            <p class="text-gray-300">Generate and solve custom assignments using our intelligent AI problem generator.</p>
+                        </div>
+                        
+                        <div class="selection-card rounded-2xl p-8 cursor-pointer animate-card" style="animation-delay: 1.2s;" data-key="java-gpt">
+                            <div class="icon text-indigo-400 mb-5"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l.346.666 3.83 7.388 8.169 1.186L18.32 17.3l1.384 8.13-7.3-3.838L5.104 25.43l1.384-8.13L0.464 11.93l8.169-1.186L12 2.69z" clip-rule="evenodd" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" opacity=".8"/><path d="M12 2.69l.346.666 3.83 7.388 8.169 1.186L18.32 17.3l1.384 8.13-7.3-3.838L5.104 25.43l1.384-8.13L0.464 11.93l8.169-1.186L12 2.69z" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" transform="rotate(15 12 12)" opacity=".4"/></svg></div>
+                            <h3 class="text-3xl font-bold font-orbitron mb-3 text-white">Java GPT</h3>
+                            <p class="text-gray-300">Chat with a Java-focused AI to get instant answers, explanations, and code debugging.</p>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1">
+                    <div class="selection-card rounded-2xl p-8 sticky top-8 animate-card" style="animation-delay: 0.7s;"> <h3 class="text-2xl font-bold font-orbitron mb-6 text-white text-center">Player Status</h3>
+                        <div class="flex flex-col items-center mb-6">
+                            <img src="https://placehold.co/128x128/8a2be2/0c0a18?text=AV" alt="Player Avatar" class="player-avatar w-32 h-32 rounded-full border-4 border-purple-500 mb-4">
+                            <p class="font-roboto-mono text-xl">User_78249</p>
+                            <p class="text-orange-400 font-bold font-orbitron">Rank: Code Initiate</p>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between font-roboto-mono text-sm mb-1"><span>LEVEL 5</span><span>XP: 8,950 / 12,000</span></div>
+                                <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden"><div id="xp-bar" class="xp-bar-fill h-4 rounded-full" style="width: 0%;"></div></div>
+                            </div>
+                            <div class="text-center pt-4"><p class="text-sm text-gray-400">Next Rank: Java Apprentice</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center p-6 mt-12"><p class="text-gray-500">&copy; 2025 JavaVerse. All Rights Reserved.</p></footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Animate XP Bar on Load ---
+            const xpBar = document.getElementById('xp-bar');
+            setTimeout(() => {
+                const percentage = (8950 / 12000) * 100;
+                xpBar.style.width = `${percentage}%`;
+            }, 500);
+
+            // --- NEW: Text Scramble/Decrypt Effect ---
+            const scrambleText = (element) => {
+                const originalText = element.innerText;
+                const chars = '!<>-_\\/[]{}—=+*^?#________';
+                let frame = 0;
+                const frameRate = 3;
+                let interval = setInterval(() => {
+                    let newText = '';
+                    for (let i = 0; i < originalText.length; i++) {
+                        if (frame / frameRate > i) {
+                            newText += originalText[i];
+                        } else {
+                            newText += chars[Math.floor(Math.random() * chars.length)];
+                        }
+                    }
+                    element.innerText = newText;
+                    if (frame > originalText.length * frameRate) {
+                        clearInterval(interval);
+                        element.innerText = originalText;
+                    }
+                    frame++;
+                }, 40);
+            };
+            const mainTitle = document.getElementById('main-title');
+            setTimeout(() => scrambleText(mainTitle), 300);
+
+            // --- UPGRADED: Interactive Background Canvas with Particle Nexus ---
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let particles = [];
+            const mouse = { x: null, y: null, radius: 150 };
+            window.addEventListener('mousemove', e => { mouse.x = e.x; mouse.y = e.y; });
+
+            const symbols = ['{}', ';', '()', '[]', '=>', 'class', 'public', 'static', 'void', 'final', 'throws', 'new', 'import'];
+            class Particle {
+                constructor() { this.reset(); this.baseX = this.x; this.baseY = this.y; this.density = (Math.random() * 30) + 1; }
+                reset() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * -50;
+                    this.size = Math.random() * 12 + 8;
+                    this.speedY = Math.random() * 1.0 + 0.5;
+                    this.symbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    this.opacity = Math.random() * 0.3 + 0.1;
+                    this.color = `rgba(138, 43, 226, ${this.opacity})`;
+                }
+                update() {
+                    // Mouse interaction
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    let forceDirectionX = dx / distance;
+                    let forceDirectionY = dy / distance;
+                    let maxDistance = mouse.radius;
+                    let force = (maxDistance - distance) / maxDistance;
+                    let directionX = 0;
+                    let directionY = 0;
+                    if (distance < mouse.radius) {
+                        directionX = -forceDirectionX * force * this.density * 0.6;
+                        directionY = -forceDirectionY * force * this.density * 0.6;
+                    }
+                    this.x += directionX;
+                    this.y += directionY;
+
+                    // Standard movement
+                    this.y += this.speedY; 
+                    if (this.y > canvas.height + 50) this.reset(); 
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.font = `${this.size}px 'Roboto Mono'`;
+                    ctx.globalAlpha = this.opacity;
+                    ctx.fillText(this.symbol, this.x, this.y);
+                }
+            }
+            function initParticles() { for (let i = 0; i < 80; i++) particles.push(new Particle()); }
+            function connectParticles() {
+                let opacityValue = 1;
+                for (let a = 0; a < particles.length; a++) {
+                    for (let b = a; b < particles.length; b++) {
+                        let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
+                                     + ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
+                        if (distance < (canvas.width / 7) * (canvas.height / 7)) {
+                            opacityValue = 1 - (distance/20000);
+                            ctx.strokeStyle = `rgba(255, 140, 0, ${opacityValue * 0.3})`;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[a].x, particles[a].y);
+                            ctx.lineTo(particles[b].x, particles[b].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+            function animateParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => { p.update(); p.draw(); });
+                connectParticles();
+                requestAnimationFrame(animateParticles);
+            }
+            initParticles();
+            animateParticles();
+            
+            // --- Interactive Light Effect on Cards ---
+            const selectionCards = document.querySelectorAll('.selection-card');
+            selectionCards.forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    card.style.setProperty('--mouse-x', `${x}px`);
+                    card.style.setProperty('--mouse-y', `${y}px`);
+                });
+            });
+
+            // --- Cartoon Tooltip with UPGRADED Notes Logic ---
+            const tooltip = document.createElement('div');
+            tooltip.className = 'cartoon-tooltip';
+            tooltip.innerHTML = `
+                <svg width="100" height="120" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(10, 10)">
+                        <path d="M15 90 C 10 70, 10 50, 20 40 L 60 40 C 70 50, 70 70, 65 90 Z" fill="#f97583" stroke="#333" stroke-width="1.5"/>
+                        <path d="M40,2C55,2,68,15,68,30 S55,58,40,58 S12,45,12,30 S25,2,40,2Z" fill="#ffebcd" stroke="#333" stroke-width="1.5"/>
+                        <circle cx="30" cy="30" r="4.5" fill="#333"/><circle cx="50" cy="30" r="4.5" fill="#333"/>
+                        <path d="M35,42 C38,46,45,46,48,42" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                        <circle cx="32" cy="28" r="1.5" fill="white"/><circle cx="52" cy="28" r="1.5" fill="white"/>
+                    </g>
+                </svg>
+                <div class="tooltip-note">
+                    <pre><code id="tooltip-code"></code></pre>
+                </div>
+            `;
+            document.body.appendChild(tooltip);
+            const tooltipCodeEl = document.getElementById('tooltip-code');
+
+            // --- UPDATED javaNotes OBJECT ---
+            const javaNotes = {
+                quests: `<span class="code-comment">// Learn core syntax step-by-step.</span>
+<span class="code-keyword">public class</span> <span class="code-class">HelloWorld</span> {
+  <span class="code-keyword">public static void</span> <span class="code-method">main</span>(String[] args) {
+    System.out.println(<span class="code-string">"Start your journey!"</span>);
+  }
+}`,
+                arena: `<span class="code-comment">// Solve complex algorithms.</span>
+<span class="code-keyword">public int</span> <span class="code-method">findMax</span>(<span class="code-keyword">int</span>[] nums) {
+  <span class="code-keyword">int</span> max = Integer.MIN_VALUE;
+  <span class="code-keyword">for</span> (<span class="code-keyword">int</span> n : nums) {
+    max = Math.max(max, n);
+  }
+  <span class="code-keyword">return</span> max;
+}`,
+                streams: `<span class="code-comment">// Master advanced concepts like Lambda.</span>
+List<String> data = ...;
+data.stream()
+    .filter(s -> s.startsWith(<span class="code-string">"J"</span>))
+    .forEach(System.out::println);`,
+                forge: `<span class="code-comment">// Build real-world applications.</span>
+<span class="code-keyword">public class</span> <span class="code-class">DataProcessor</span> <span class="code-keyword">implements</span> Runnable {
+  @Override
+  <span class="code-keyword">public void</span> <span class="code-method">run</span>() {
+    <span class="code-comment">// Process data from an API...</span>
+  }
+}`,
+                game1: `<span class="code-comment">// Welcome to Game 1!</span>
+<span class="code-keyword">if</span> (player.hasKey()) {
+  door.open();
+}`,
+                game2: `<span class="code-comment">// Welcome to Game 2!</span>
+<span class="code-keyword">while</span> (boss.isAlive()) {
+  player.attack(boss);
+}`,
+                game3: `<span class="code-comment">// Welcome to Game 3!</span>
+<span class="code-class">Path</span> path = <span class="code-class">Pathfinder</span>.find(start, end);
+player.follow(path);`,
+                reels: `<span class="code-comment">// Short, quick tips.</span>
+<span class="code-keyword">for</span> (<span class="code-keyword">int</span> i = <span class="code-number">0</span>; i < <span class="code-number">5</span>; i++) {
+  System.out.println(<span class="code-string">"Looping fast!"</span>);
+}`,
+                'ai-assignment': `<span class="code-comment">// AI-generated challenge.</span>
+<span class="code-keyword">import</span> com.javaverse.ai.ProblemGenerator;
+<span class="code-class">Challenge</span> newChallenge = 
+  ProblemGenerator.create(<span class="code-class">Difficulty</span>.MEDIUM);`,
+                // --- NEW NOTE FOR Java GPT ---
+                'java-gpt': `<span class="code-comment">// Your personal Java AI assistant.</span>
+<span class="code-class">Chatbot</span> bot = <span class="code-class">JavaGPT</span>.getInstance();
+String answer = bot.ask(
+  <span class="code-string">"Explain 'final' keyword"</span>
+);`
+            };
+
+            selectionCards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    const key = card.dataset.key;
+                    if(javaNotes[key]) {
+                        tooltipCodeEl.innerHTML = javaNotes[key];
+                    }
+                    tooltip.classList.add('visible');
+                });
+                card.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('visible');
+                });
+                card.addEventListener('mousemove', (e) => {
+                    tooltip.style.left = `${e.clientX - 330}px`;
+                    tooltip.style.top = `${e.clientY - 150}px`;
+                });
+
+                // --- MODIFIED CLICK LISTENER ---
+                card.addEventListener('click', () => {
+                    const key = card.dataset.key;
+                    if (key === 'quests') {
+                        window.location.href = 'quests.html';
+                    } else if (key === 'arena') {
+                        window.location.href = 'compiler.html';
+                    } else if (key === 'streams') {
+                        window.location.href = 'video.html';
+                    } else if (key === 'forge') {
+                        window.location.href = 'project.html';
+                    } 
+                    else if (key === 'game1') {
+                        window.location.href = 'game.html';
+                    } else if (key === 'game2') {
+                        window.location.href = 'lan.html';
+                    } else if (key === 'game3') {
+                        window.location.href = 'verify.html';
+                    }
+                    else if (key === 'reels') {
+                        window.location.href = 'reel.html';
+                    } else if (key === 'ai-assignment') {
+                        window.location.href = 'assignment.html';
+                    }
+                    
+                    else if (key === 'java-gpt') {
+                        window.location.href = 'javagpt.html';
+                    }
+                });
+            });
+
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                particles = [];
+                initParticles();
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Java Reels</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        .reels-container {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .reels-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        .reel-item {
+            scroll-snap-align: start;
+            flex-shrink: 0;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            background: black;
+        }
+        .text-shadow-lg {
+            text-shadow: 0 0 6px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen font-sans">
+    <main class="w-full max-w-md mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-4 text-orange-400">Java Reels</h1>
+        <p class="text-center text-gray-400 mb-6">Your daily dose of Java programming tips.</p>
+        
+        <div class="bg-black rounded-2xl shadow-2xl overflow-hidden relative h-[90vh] md:h-[85vh]">
+            <div id="reels-container" class="reels-container w-full h-full"></div>
+            
+            <button id="prev-btn" class="absolute top-1/2 left-2 -translate-y-1/2 bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-full p-2 text-white transition-all z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <button id="next-btn" class="absolute top-1/2 right-2 -translate-y-1/2 bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-full p-2 text-white transition-all z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const reelsData = [
+                {
+                    id: 0,
+                    // --- THIS IS THE CHANGED LINE ---
+                    videoSrc: "hi.mp4", // <-- Assumes 'my_local_reel.mp4' is in the same folder
+                    avatar: "https://placehold.co/40x40/FF5722/FFFFFF?text=JM",
+                    username: "@JavaMaster",
+                    caption: "Java is a high-level, object-oriented programming language.",
+                    hashtags: "#java #programming #dev"
+                },
+                {
+                    id: 1,
+                    videoSrc: "hi1.mp4",
+                    avatar: "https://placehold.co/40x40/4CAF50/FFFFFF?text=CJ",
+                    username: "@CodeWithJava",
+                    caption: "It was developed by James Gosling at Sun Microsystems in 1995.",
+                    hashtags: "#javabasics #tutorial"
+                },
+                {
+                    id: 2,
+                    videoSrc: "hi2.mp4",
+                    avatar: "https://placehold.co/40x40/2196F3/FFFFFF?text=JI",
+                    username: "@JVM_Insider",
+                    caption: "Java follows the principle    Write Once, Run Anywhere (WORA).",
+                    hashtags: "#datastructures #java"
+                },
+                {
+                    id: 3,
+                    videoSrc: "hi3.mp4",
+                    avatar: "https://placehold.co/40x40/E91E63/FFFFFF?text=EJ",
+                    username: "@EnterpriseJava",
+                    caption: "Java programs are compiled into bytecode.",
+                    hashtags: "#springboot #backend"
+                },
+                {
+                    id: 4,
+                    videoSrc: "hi4.mp4",
+                    avatar: "https://placehold.co/40x40/9C27B0/FFFFFF?text=GF",
+                    username: "@GarbageFirst",
+                    caption: "The Java Virtual Machine (JVM) executes this bytecode.",
+                    hashtags: "#jvm #java #performance"
+                },
+                {
+                    id: 5,
+                    videoSrc: "hi5.mp4",
+                    avatar: "https://placehold.co/40x40/03A9F4/FFFFFF?text=JS",
+                    username: "@JavaSyntax",
+                    caption: "Java is known for its platform independence.",
+                    hashtags: "#java #cleanCode #bestpractices"
+                },
+                {
+                    id: 6,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+                    avatar: "https://placehold.co/40x40/FFC107/FFFFFF?text=JT",
+                    username: "@JavaTips",
+                    caption: "Java is widely used for desktop, mobile, and web applications.",
+                    hashtags: "#java #tips #beginners"
+                },
+                {
+                    id: 7,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                    avatar: "https://placehold.co/40x40/009688/FFFFFF?text=JD",
+                    username: "@JavaDaily",
+                    caption: "Java supports Object-Oriented concepts like inheritance and polymorphism.",
+                    hashtags: "#java #datatypes #variables"
+                },
+                {
+                    id: 8,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
+                    avatar: "https://placehold.co/40x40/673AB7/FFFFFF?text=JL",
+                    username: "@JavaLearner",
+                    caption: "Java has a rich standard library for various functionalities.",
+                    hashtags: "#exceptionhandling #java"
+                },
+                {
+                    id: 9,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
+                    avatar: "https://placehold.co/40x40/795548/FFFFFF?text=JC",
+                    username: "@JavaCoder",
+                    caption: "Java uses automatic garbage collection to manage memory.",
+                    hashtags: "#java #streams #tutorial"
+                },
+                {
+                    id: 10,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+                    avatar: "https://placehold.co/40x40/FF5722/FFFFFF?text=JP",
+                    username: "@JavaPro",
+                    caption: "Java syntax is similar to C++ but simpler.",
+                    hashtags: "#java #multithreading"
+                },
+                {
+                    id: 11,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+                    avatar: "https://placehold.co/40x40/4CAF50/FFFFFF?text=JA",
+                    username: "@JavaAdvance",
+                    caption: "Java code is divided into classes and objects.",
+                    hashtags: "#java8 #features"
+                },
+                {
+                    id: 12,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                    avatar: "https://placehold.co/40x40/2196F3/FFFFFF?text=JS",
+                    username: "@JavaStudent",
+                    caption: "The main file in Java must have a main() method to execute.",
+                    hashtags: "#java #documentation"
+                },
+                {
+                    id: 13,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                    avatar: "https://placehold.co/40x40/E91E63/FFFFFF?text=JU",
+                    username: "@JavaUpdates",
+                    caption: "Java programs use packages to group related classes.",
+                    hashtags: "#java #modules"
+                },
+                {
+                    id: 14,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                    avatar: "https://placehold.co/40x40/9C27B0/FFFFFF?text=JG",
+                    username: "@JavaGuru",
+                    caption: "Java is strongly typed, meaning each variable has a type.",
+                    hashtags: "#java #designpatterns"
+                },
+                {
+                    id: 15,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                    avatar: "https://placehold.co/40x40/03A9F4/FFFFFF?text=JM",
+                    username: "@JavaMentor",
+                    caption: "Java supports multithreading for parallel task execution.",
+                    hashtags: "#java #lambda"
+                },
+                {
+                    id: 16,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+                    avatar: "https://placehold.co/40x40/FFC107/FFFFFF?text=JT",
+                    username: "@JavaTeacher",
+                    caption: "Exception handling in Java ensures error-free program flow.",
+                    hashtags: "#java #interview"
+                },
+                {
+                    id: 17,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+                    avatar: "https://placehold.co/40x40/009688/FFFFFF?text=JC",
+                    username: "@JavaCoach",
+                    caption: "Java is secure because of runtime checks and the JVM sandbox.",
+                    hashtags: "#java #debugging"
+                },
+                {
+
+                    id: 18,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+                    avatar: "https://placehold.co/40x40/673AB7/FFFFFF?text=JA",
+                    username: "@JavaAce",
+                    caption: "Java is used to build Android applications",
+                    hashtags: "#java #performance"
+                },
+                {
+                    id: 19,
+                    videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                    avatar: "https://placehold.co/40x40/795548/FFFFFF?text=JS",
+                    username: "@JavaSolutions",
+                    caption: "Java Collections framework explained simply.",
+                    hashtags: "#java #collections"
+                }
+            ];
+
+            const heartIcon = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;
+            const filledHeartIcon = `<svg class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;
+            const commentIcon = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2s10 4.477 10 10z"></path></svg>`;
+            const shareIcon = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>`;
+            const muteIcon = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.707.707v12.414a1 1 0 01-1.707.707L5.586 15z"></path></svg>`;
+            const unmuteIcon = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707a1 1 0 011.707.707v12.414a1 1 0 01-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>`;
+
+            const reelsContainer = document.getElementById('reels-container');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+
+            let allReels = [];
+            let currentReelIndex = 0;
+            const totalReels = reelsData.length;
+
+            function loadReels() {
+                reelsContainer.innerHTML = '';
+                allReels = [];
+                reelsData.forEach((data, index) => {
+                    const reelElement = document.createElement('div');
+                    reelElement.className = 'reel-item w-full h-full relative';
+                    reelElement.id = `reel-${data.id}`;
+                    reelElement.dataset.index = index;
+
+                    // --- THIS IS THE UPDATED PART ---
+                    reelElement.innerHTML = `
+                        <video 
+                            src="${data.videoSrc}" 
+                            loop 
+                            muted 
+                            playsinline 
+                            preload="auto" 
+                            class="w-full h-full object-cover"
+                        ></video>
+                        
+                        <div class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+
+                        <div class="absolute bottom-0 left-0 right-0 p-4 pb-6 flex justify-between items-end">
+                            <div class="text-shadow-lg max-w-[75%] space-y-2">
+                                <div class="flex items-center space-x-3">
+                                    <img src="${data.avatar}" alt="avatar" class="w-10 h-10 rounded-full border-2 border-white/80" />
+                                    <h3 class="font-bold text-lg">${data.username}</h3>
+                                    <span class="text-sm text-white/90 font-semibold">· Follow</span>
+                                </div>
+                                <p class="text-sm">${data.caption}</p>
+                                <p class="text-sm font-medium text-orange-300">${data.hashtags}</p>
+                            </div>
+                            
+                            <div class="flex flex-col space-y-5">
+                                <button class="like-btn w-12 h-12 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-all">
+                                    ${heartIcon}
+                                </button>
+                                <button class="w-12 h-12 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-all">
+                                    ${commentIcon}
+                                </button>
+                                <button class="w-12 h-12 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-all">
+                                    ${shareIcon}
+                                </button>
+                                <button class="mute-btn w-12 h-12 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-all">
+                                    ${unmuteIcon}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    // --- END OF UPDATED PART ---
+
+                    reelsContainer.appendChild(reelElement);
+                    allReels.push(reelElement);
+                });
+            }
+
+            function setupObserver() {
+                const options = {
+                    root: reelsContainer,
+                    threshold: 0.75
+                };
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const video = entry.target.querySelector('video');
+                        if (entry.isIntersecting && entry.intersectionRatio >= 0.75) {
+                            video.play().catch(() => {});
+                            currentReelIndex = parseInt(entry.target.dataset.index);
+                        } else {
+                            video.pause();
+                        }
+                    });
+                }, options);
+                allReels.forEach(reel => observer.observe(reel));
+            }
+
+            function scrollToReel(index) {
+                if (allReels[index]) {
+                    reelsContainer.scrollTop = allReels[index].offsetTop - reelsContainer.offsetTop;
+                    currentReelIndex = index;
+                }
+            }
+
+            function setupControls() {
+                nextBtn.addEventListener('click', () => {
+                    const nextIndex = (currentReelIndex + 1) % totalReels;
+                    scrollToReel(nextIndex);
+                });
+                prevBtn.addEventListener('click', () => {
+                    const prevIndex = (currentReelIndex - 1 + totalReels) % totalReels;
+                    scrollToReel(prevIndex);
+                });
+                reelsContainer.addEventListener('click', (e) => {
+                    const muteButton = e.target.closest('.mute-btn');
+                    if (muteButton) {
+                        const video = muteButton.closest('.reel-item').querySelector('video');
+                        video.muted = !video.muted;
+                        muteButton.innerHTML = video.muted ? unmuteIcon : muteIcon;
+                    }
+                    const likeButton = e.target.closest('.like-btn');
+                    if (likeButton) {
+                        const isLiked = likeButton.dataset.liked === 'true';
+                        likeButton.dataset.liked = !isLiked;
+                        likeButton.innerHTML = !isLiked ? filledHeartIcon : heartIcon;
+                    }
+                });
+            }
+
+            loadReels();
+            setupObserver();
+            setupControls();
+        });
+    </script>
+</body>
+</html>

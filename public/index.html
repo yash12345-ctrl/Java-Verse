@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaVerse - Your Gamified Java Adventure</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Custom CSS for the "JavaVerse" theme */
+        :root {
+            --glow-purple: #8a2be2;
+            --glow-orange: #ff8c00;
+            --code-string: #6a8759;
+            --code-keyword: #cc7832;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a18;
+            color: #e0e0e0;
+            overflow-x: hidden;
+            cursor: crosshair; /* Game-like cursor */
+        }
+        
+        .body-hidden {
+            overflow: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* --- Animations --- */
+        @keyframes background-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes text-glow { 0%, 100% { text-shadow: 0 0 10px var(--glow-purple), 0 0 20px var(--glow-purple), 0 0 30px #4b0082; } 50% { text-shadow: 0 0 20px #9400d3, 0 0 30px #9400d3, 0 0 40px var(--glow-purple); } }
+        @keyframes button-glow { 0%, 100% { box-shadow: 0 0 5px var(--glow-orange), 0 0 10px var(--glow-orange), 0 0 15px var(--glow-orange), inset 0 0 5px var(--glow-orange); transform: scale(1); } 50% { box-shadow: 0 0 15px #ffa500, 0 0 25px #ffa500, 0 0 35px #ffa500, inset 0 0 10px #ffa500; transform: scale(1.05); } }
+        @keyframes glitch { 2%, 64% { transform: translate(2px, 0) skew(0deg); } 4%, 60% { transform: translate(-2px, 0) skew(0deg); } 62% { transform: translate(0, 0) skew(5deg); } }
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fill-bar { from { width: 0%; } to { width: var(--fill-percentage, 0%); } }
+        @keyframes fade-and-rise { from { opacity: 1; transform: translate(-50%, 0) scale(1); } to { opacity: 0; transform: translate(-50%, -80px) scale(0.5); } }
+        @keyframes blink { from, to { background-color: transparent; } 50% { background-color: var(--glow-orange); } }
+        @keyframes preloader-fade-out { to { opacity: 0; visibility: hidden; } }
+
+        /* --- Component Styles --- */
+        .hero-section {
+            background-image: linear-gradient(135deg, rgba(12, 10, 24, 0.9) 0%, rgba(28, 10, 52, 0.9) 100%), url('https://www.transparenttextures.com/patterns/cubes.png');
+            background-size: 200% 200%;
+            animation: background-pan 25s ease infinite;
+            position: relative;
+            perspective: 1000px;
+        }
+
+        .main-title { animation: text-glow 4s ease-in-out infinite; }
+        .main-title:hover { animation: text-glow 4s ease-in-out infinite, glitch 250ms infinite; }
+        .start-button { animation: button-glow 3s ease-in-out infinite; }
+        
+        .feature-card { background-color: rgba(23, 19, 44, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(138, 43, 226, 0.4); transition: all 0.3s ease-in-out; }
+        .feature-card:hover { transform: translateY(-10px) scale(1.03); border-color: var(--glow-orange); box-shadow: 0 10px 30px rgba(255, 140, 0, 0.3); }
+        .feature-card:hover .icon-glow { filter: drop-shadow(0 0 8px var(--glow-orange)); transform: scale(1.1); }
+
+        .typing-cursor { display: inline-block; width: 10px; height: 2.5rem; background-color: var(--glow-orange); margin-left: 8px; animation: blink 1s step-end infinite; }
+        
+        .reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.8s ease-out, transform 0.8s ease-out; }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+        
+        .stat-bar-fill { background: linear-gradient(90deg, var(--glow-purple), var(--glow-orange)); box-shadow: 0 0 10px var(--glow-orange); animation: fill-bar 2s ease-out forwards; }
+
+        .code-trail { position: fixed; pointer-events: none; font-family: 'Roboto Mono', monospace; text-shadow: 0 0 5px currentColor; animation: fade-and-rise 1.8s linear forwards; z-index: 9999; font-size: 14px; white-space: nowrap; }
+        
+        /* --- Pre-loader --- */
+        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0c0a18; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
+        
+        #boot-text { 
+            font-family: 'Roboto Mono', monospace; 
+            color: #e0e0e0;
+            z-index: 1;
+            text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+        }
+
+        .preloader-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body class="antialiased body-hidden">
+
+    <div id="preloader">
+        <video class="preloader-video" autoplay muted loop playsinline>
+            <source src="background-video.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        
+        <p id="boot-text">Initializing virtual environment...</p>
+    </div>
+
+    <canvas id="particle-canvas" class="fixed top-0 left-0 w-full h-full z-0"></canvas>
+
+    <div class="relative z-10 opacity-0" id="main-content">
+        <header class="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20">
+            <a href="#" class="text-3xl font-bold font-orbitron tracking-widest text-white transition-all duration-300 hover:text-orange-400" style="text-shadow: 0 0 10px var(--glow-purple);">JavaVerse</a>
+            <nav class="hidden md:flex items-center space-x-8">
+                <a href="#features" class="text-gray-300 hover:text-orange-400 transition-colors duration-300 text-lg">Features</a>
+                <a href="#stats" class="text-gray-300 hover:text-orange-400 transition-colors duration-300 text-lg">Stats</a>
+                <a href="#" class="text-gray-300 hover:text-orange-400 transition-colors duration-300 text-lg">Login</a>
+                <button class="bg-purple-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-purple-500/30">Sign Up</button>
+            </nav>
+            <button class="md:hidden text-white"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
+        </header>
+
+        <main class="hero-section min-h-screen flex items-center justify-center text-center overflow-hidden pt-20">
+            <div id="hero-content" class="container mx-auto px-6 transition-transform duration-300 ease-out">
+                <h1 class="text-5xl md:text-7xl lg:text-8xl font-black font-orbitron main-title uppercase tracking-wider cursor-pointer"><span id="typing-text"></span><span class="typing-cursor"></span></h1>
+                <p class="text-lg md:text-2xl text-gray-300 mt-8 max-w-3xl mx-auto" style="text-shadow: 1px 1px 5px #000;">Your epic adventure to master Java begins now. Complete quests, fight code bosses, and level up your skills in a universe built for learning.</p>
+                <div class="mt-12"><a href="profile.html" class="start-button inline-block bg-orange-500 text-gray-900 font-bold font-orbitron text-2xl py-4 px-12 rounded-full transition-all duration-300">Start Your Adventure</a></div>
+                <div class="mt-20"><svg class="w-12 h-12 text-white mx-auto animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg></div>
+            </div>
+        </main>
+
+        <section id="features" class="py-24 bg-opacity-50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-4xl md:text-5xl font-bold font-orbitron uppercase text-white reveal">The Path of a Java Knight</h2>
+                    <p class="text-xl text-gray-400 mt-4 reveal">Your training is divided into legendary trials.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                    <div class="feature-card rounded-2xl p-8 text-center reveal">
+                        <div class="icon-glow text-6xl text-purple-400 mb-6 flex justify-center items-center transition-all duration-300"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+                        <h3 class="text-2xl font-bold font-orbitron mb-4 text-white">Interactive Quests</h3>
+                        <p class="text-gray-300">Embark on guided quests to learn the fundamentals. From basic syntax to complex data structures, each quest is a step towards mastery.</p>
+                    </div>
+                     <div class="feature-card rounded-2xl p-8 text-center reveal" style="transition-delay: 100ms;">
+                         <div class="icon-glow text-6xl text-orange-400 mb-6 flex justify-center items-center transition-all duration-300"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
+                        <h3 class="text-2xl font-bold font-orbitron mb-4 text-white">Live Code Battles</h3>
+                        <p class="text-gray-300">Challenge fellow learners in real-time coding arenas. Test your speed, efficiency, and problem-solving skills to climb the global leaderboard.</p>
+                    </div>
+                    <div class="feature-card rounded-2xl p-8 text-center reveal" style="transition-delay: 200ms;">
+                         <div class="icon-glow text-6xl text-red-500 mb-6 flex justify-center items-center transition-all duration-300"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg></div>
+                        <h3 class="text-2xl font-bold font-orbitron mb-4 text-white">Epic Boss Fights</h3>
+                        <p class="text-gray-300">Face the ultimate challenge: project-based "Boss Fights". Build real-world applications to defeat the boss and earn legendary rewards.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="stats" class="py-24">
+            <div class="container mx-auto px-6">
+                 <div class="text-center mb-16">
+                    <h2 class="text-4xl md:text-5xl font-bold font-orbitron uppercase text-white reveal">Your Player Profile</h2>
+                    <p class="text-xl text-gray-400 mt-4 reveal">Track your progress and rise through the ranks.</p>
+                </div>
+                <div class="feature-card rounded-2xl p-8 lg:p-12 max-w-4xl mx-auto reveal">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                        <div><p class="text-lg text-gray-400 font-orbitron">RANK</p><p class="text-5xl font-bold font-orbitron text-orange-400 mt-2">Code Initiate</p></div>
+                        <div><p class="text-lg text-gray-400 font-orbitron">QUESTS</p><p class="text-5xl font-bold font-orbitron text-white mt-2 stat-counter" data-target="74">0</p></div>
+                        <div><p class="text-lg text-gray-400 font-orbitron">XP</p><p class="text-5xl font-bold font-orbitron text-white mt-2 stat-counter" data-target="8950">0</p></div>
+                    </div>
+                    <div class="mt-12 space-y-6">
+                        <div><div class="flex justify-between items-center mb-2 font-orbitron"><span class="text-purple-400">Core Syntax</span><span class="text-white">85%</span></div><div class="w-full bg-gray-700 rounded-full h-4"><div class="stat-bar-fill h-4 rounded-full" style="--fill-percentage: 85%;"></div></div></div>
+                        <div><div class="flex justify-between items-center mb-2 font-orbitron"><span class="text-purple-400">OOP Concepts</span><span class="text-white">65%</span></div><div class="w-full bg-gray-700 rounded-full h-4"><div class="stat-bar-fill h-4 rounded-full" style="--fill-percentage: 65%;"></div></div></div>
+                        <div><div class="flex justify-between items-center mb-2 font-orbitron"><span class="text-purple-400">Data Structures</span><span class="text-white">40%</span></div><div class="w-full bg-gray-700 rounded-full h-4"><div class="stat-bar-fill h-4 rounded-full" style="--fill-percentage: 40%;"></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="py-12 bg-black bg-opacity-30"><div class="container mx-auto px-6 text-center text-gray-400"><p class="text-2xl font-orbitron font-bold mb-4">JavaVerse</p><p>&copy; 2025 JavaVerse. All Rights Reserved. Forge Your Legend.</p></div></footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- MODIFIED: Text-to-Speech with new message on first click ---
+            if ('speechSynthesis' in window) {
+                // The new, longer welcome message
+                const welcomeSpeech = new SpeechSynthesisUtterance("Welcome to Javaverse, an online platform where you can extend your Java coding limits.");
+
+                // A function that speaks the text
+                const speakWelcomeMessage = () => {
+                    window.speechSynthesis.speak(welcomeSpeech);
+                };
+
+                // Listen for the first click anywhere on the document to play the speech
+                document.addEventListener('click', speakWelcomeMessage, { once: true });
+                
+            } else {
+                console.log("Sorry, your browser does not support text-to-speech.");
+            }
+
+            // --- Boot Sequence / Pre-loader ---
+            const preloader = document.getElementById('preloader');
+            const bootText = document.getElementById('boot-text');
+            const mainContent = document.getElementById('main-content');
+            
+            const bootSequence = [
+                "Mounting code libraries...",
+                "Compiling class files...",
+                "Establishing connection to the Verse...",
+                "All systems go. Welcome, Coder."
+            ];
+
+            let sequenceIndex = 0;
+            const interval = setInterval(() => {
+                if(sequenceIndex < bootSequence.length) {
+                    bootText.textContent = bootSequence[sequenceIndex];
+                    sequenceIndex++;
+                } else {
+                    clearInterval(interval);
+                    preloader.style.animation = 'preloader-fade-out 0.5s forwards';
+                    document.body.classList.remove('body-hidden');
+                    mainContent.style.transition = 'opacity 0.5s ease-in';
+                    mainContent.style.opacity = '1';
+                }
+            }, 700);
+
+
+            // --- Typing Animation ---
+            const typingTextElement = document.getElementById('typing-text');
+            const textToType = "Unlock The Code";
+            let charIndex = 0;
+            function type() {
+                if (charIndex < textToType.length) {
+                    typingTextElement.textContent += textToType.charAt(charIndex++);
+                    setTimeout(type, 150);
+                } else {
+                    setTimeout(() => { typingTextElement.textContent = ""; charIndex = 0; type(); }, 5000);
+                }
+            }
+            // Start typing after preloader finishes
+            setTimeout(type, bootSequence.length * 700);
+
+            // --- Enhanced Digital Rain Animation ---
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let particles = [];
+            const symbols = ['{', '}', ';', '()', '[]', '<', '>', '/', '""', 'class', 'public', 'static', 'void'];
+            class Particle {
+                constructor() { this.reset(); }
+                reset() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * -canvas.height;
+                    this.size = Math.random() * 12 + 8;
+                    this.speedY = Math.random() * 1.5 + 0.5;
+                    this.symbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    this.opacity = Math.random() * 0.4 + 0.2;
+                    this.color = `rgba(138, 43, 226, ${this.opacity})`;
+                }
+                update() {
+                    this.y += this.speedY;
+                    if (this.y > canvas.height) this.reset();
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.font = `${this.size}px 'Roboto Mono'`;
+                    ctx.globalAlpha = this.opacity;
+                    ctx.fillText(this.symbol, this.x, this.y);
+                }
+            }
+            function initParticles() { for (let i = 0; i < 150; i++) particles.push(new Particle()); }
+            function animateParticles() {
+                ctx.fillStyle = 'rgba(12, 10, 24, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+                particles.forEach(p => { p.update(); p.draw(); });
+                requestAnimationFrame(animateParticles);
+            }
+            initParticles();
+            animateParticles();
+
+            // --- Hero Parallax Effect ---
+            const heroSection = document.querySelector('.hero-section');
+            const heroContent = document.getElementById('hero-content');
+            heroSection.addEventListener('mousemove', (e) => {
+                const { clientX, clientY } = e;
+                const { offsetWidth, offsetHeight } = heroSection;
+                const x = (clientX / offsetWidth - 0.5) * 30;
+                const y = (clientY / offsetHeight - 0.5) * 30;
+                heroContent.style.transform = `translate(${x}px, ${y}px) rotateY(${-x/10}deg) rotateX(${y/10}deg)`;
+            });
+
+            // --- Refined Code Trail on Cursor Move ---
+            const javaSnippets = [
+                { text: 'public class Main', color: 'var(--code-keyword)' },
+                { text: 'System.out.println("Hello, Verse!");', color: 'var(--code-string)' },
+                { text: 'int i = 0;', color: '#dcdcdc' },
+                { text: 'for (int i...){}', color: 'var(--code-keyword)' },
+                { text: 'String s = "Java";', color: 'var(--code-string)' }, 
+                { text: 'private static void', color: 'var(--code-keyword)' },
+                { text: 'new ArrayList<>()', color: '#dcdcdc' },
+                { text: 'Math.random()', color: 'var(--glow-purple)' },
+                { text: '};', color: '#dcdcdc' },
+                { text: 'import java.util.*;', color: 'var(--code-keyword)' }
+            ];
+            let snippetIndex = 0;
+            let canCreateTrail = true;
+
+            document.addEventListener('mousemove', (e) => {
+                if (!canCreateTrail) return;
+                canCreateTrail = false;
+                setTimeout(() => { canCreateTrail = true; }, 50);
+
+                const trail = document.createElement('span');
+                trail.className = 'code-trail';
+                const snippet = javaSnippets[snippetIndex];
+                
+                trail.textContent = snippet.text;
+                trail.style.color = snippet.color;
+                snippetIndex = (snippetIndex + 1) % javaSnippets.length;
+
+                trail.style.left = `${e.clientX}px`;
+                trail.style.top = `${e.clientY}px`;
+                document.body.appendChild(trail);
+                setTimeout(() => { trail.remove(); }, 1800);
+            });
+
+            // --- Scroll Reveal & Stat Counter ---
+            const revealElements = document.querySelectorAll('.reveal');
+            const statCounters = document.querySelectorAll('.stat-counter');
+            let statsAnimated = false;
+            const animateCounters = () => {
+                 if(statsAnimated) return;
+                 statsAnimated = true;
+                 statCounters.forEach(counter => {
+                    const target = +counter.getAttribute('data-target');
+                    let current = 0;
+                    const increment = target / 100;
+                    const updateCounter = () => {
+                        if (current < target) {
+                            current += increment;
+                            counter.innerText = Math.ceil(current).toLocaleString();
+                            requestAnimationFrame(updateCounter);
+                        } else {
+                            counter.innerText = target.toLocaleString();
+                        }
+                    };
+                    updateCounter();
+                });
+            }
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        if(entry.target.contains(statCounters[0])) { animateCounters(); }
+                    }
+                });
+            }, { threshold: 0.1 });
+            revealElements.forEach(el => observer.observe(el));
+            
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                particles = [];
+                initParticles();
+            });
+        });
+    </script>
+</body>
+</html>
+

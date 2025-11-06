@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Java Verse - Learn Java Gamified</title>
+<style>
+  /* Reset and base */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #ddd;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  /* Container */
+  .container {
+    max-width: 1200px;
+    width: 90%;
+    margin-top: 2rem;
+    text-align: center;
+  }
+  h1 {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: #f0a500;
+    margin-bottom: 0.5rem;
+    user-select: none;
+    animation: neonGlow 2.5s ease-in-out infinite alternate;
+  }
+  @keyframes neonGlow {
+    0%,
+    100% {
+      text-shadow:
+        0 0 10px #f0a500,
+        0 0 20px #f0a500,
+        0 0 30px #f0a500,
+        0 0 40px #ff8c00,
+        0 0 70px #ff8c00,
+        0 0 80px #ff8c00;
+    }
+    50% {
+      text-shadow: none;
+    }
+  }
+  .subtitle {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    color: #eee;
+    letter-spacing: 0.05em;
+  }
+
+  /* Search bar */
+  .search-bar {
+    position: relative;
+    max-width: 500px;
+    margin: 0 auto 3rem;
+  }
+  .search-bar input[type="text"] {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    border-radius: 50px;
+    border: none;
+    font-size: 1.2rem;
+    outline: none;
+    transition: box-shadow 0.3s ease;
+    background: #1b2733;
+    color: #fff;
+  }
+  .search-bar input[type="text"]:focus {
+    box-shadow: 0 0 10px #f0a500;
+  }
+  .search-bar button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #f0a500;
+    border: none;
+    padding: 0.7rem 1.2rem;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #000;
+    font-weight: 700;
+    font-size: 1.3rem;
+    transition: transform 0.3s ease, background 0.3s ease;
+    box-shadow: 0 0 8px #f0a500;
+  }
+  .search-bar button:hover {
+    transform: translateY(-50%) scale(1.1);
+    background: #ffb845;
+  }
+
+  /* Results grid */
+  .results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.8rem;
+    padding-bottom: 3rem;
+  }
+  .video-card {
+    background: #14232e;
+    border-radius: 15px;
+    box-shadow: 0 0 15px rgba(240, 165, 0, 0.3);
+    overflow: hidden;
+    transform-style: preserve-3d;
+    will-change: transform;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative; /* Needed for progress bar positioning */
+  }
+  .video-card:hover {
+    transform: translateY(-15px) scale(1.05);
+    box-shadow: 0 10px 30px rgba(240, 165, 0, 0.8);
+  }
+  .video-thumb {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    filter: brightness(90%);
+    transition: filter 0.3s ease;
+  }
+  .video-card:hover .video-thumb {
+    filter: brightness(100%);
+  }
+  .video-info {
+    padding: 1rem 1.2rem 1.2rem;
+    text-align: left;
+  }
+  .video-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #f0a500;
+    margin-bottom: 0.6rem;
+    min-height: 48px;
+  }
+  .video-desc {
+    font-size: 0.9rem;
+    line-height: 1.3;
+    color: #ddd;
+    height: 3.9rem;
+    overflow: hidden;
+  }
+
+  /* Video Progress Bar Styling */
+  .video-progress-container {
+    position: absolute;
+    bottom: 0; /* Position at the bottom of the card */
+    left: 0;
+    width: 100%;
+    height: 8px; /* Height of the progress bar */
+    background-color: rgba(255, 255, 255, 0.1); /* Background for empty progress */
+    z-index: 10;
+  }
+  .video-progress-bar {
+    height: 100%;
+    background-color: #f0a500; /* Progress color */
+    width: 0%; /* Initial width */
+    transition: width 0.3s ease-out; /* Smooth transition for progress updates */
+  }
+  .video-progress-text {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.8em;
+    color: #eee;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 2px 5px;
+    border-radius: 5px;
+    z-index: 11;
+    display: none; /* Hidden by default */
+  }
+  .video-card:hover .video-progress-text {
+    display: block; /* Show on hover */
+  }
+
+
+  /* Video player modal */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 32, 39, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 1000;
+  }
+  .modal.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: all;
+  }
+  .modal-content {
+    position: relative;
+    width: 90vw;
+    max-width: 800px;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 20px;
+    box-shadow: 0 0 30px #f0a500;
+    overflow: hidden;
+    animation: modalFadeIn 0.5s ease forwards;
+  }
+  @keyframes modalFadeIn {
+    from {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  /* The YouTube player will be injected here */
+  #youtube-player-container {
+    width: 100%;
+    height: 100%;
+  }
+  .modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #f0a500;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-weight: 900;
+    font-size: 1.3rem;
+    color: #000;
+    cursor: pointer;
+    box-shadow: 0 0 10px #f0a500;
+    z-index: 1001; /* Ensure close button is above player */
+  }
+  .modal-close:hover {
+    background: #ffb845;
+  }
+
+  /* Footer */
+  footer {
+    margin: auto 0 1.5rem;
+    font-size: 0.9rem;
+    color: #aaa;
+  }
+
+  /* Animations */
+  @keyframes bounceInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(100px);
+    }
+    60% {
+      opacity: 1;
+      transform: translateY(-15px);
+    }
+    80% {
+      transform: translateY(5px);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Java Verse</h1>
+    <p class="subtitle">Learn Java in a fun, gamified way. Search below for Java tutorials & videos!</p>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search Java videos..." autocomplete="off" />
+      <button id="searchBtn" title="Search">&#128269;</button>
+    </div>
+    <div id="results" class="results" aria-live="polite"></div>
+  </div>
+
+  <div id="videoModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
+    <div class="modal-content">
+      <button class="modal-close" aria-label="Close video player">&times;</button>
+      <div id="youtube-player-container"></div>
+    </div>
+  </div>
+
+  <footer>© 2025 Java Verse - Your Gamified Java Learning Portal</footer>
+
+<script>
+  // Load the YouTube IFrame Player API asynchronously
+  var tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  var firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+  // Global variable for the YouTube player
+  let youtubePlayer;
+  let currentPlayingVideoId = null;
+  let progressInterval = null;
+
+  // Function called by the YouTube API when it's ready
+  function onYouTubeIframeAPIReady() {
+    // This function will be called when the API is loaded
+    // We create the player only when a video is opened in the modal
+  }
+
+  // --- UPDATED AND EXPANDED VIDEO LIST ---
+  const demoJavaVideos = [
+    {
+      id: 'grEKMHGYyns',
+      title: 'Java Beginner Tutorial - Full Course',
+      desc: 'Comprehensive Java tutorial for beginners covering basics to advanced topics.',
+      thumbnail: 'https://img.youtube.com/vi/grEKMHGYyns/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/grEKMHGYyns'
+    },
+    {
+      id: 'eI_S_b2-F-Q', // Replaced broken ID
+      title: 'Java Tutorial for Beginners - Mosh',
+      desc: 'Get started with Java programming in this comprehensive tutorial by Mosh Hamedani.',
+      thumbnail: 'https://img.youtube.com/vi/eI_S_b2-F-Q/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/watch?v=eIrMbAQSU34'
+    },
+    {
+      id: '7W4N1LKJoOw',
+      title: 'Java OOP Concepts Explained',
+      desc: 'Understand Object-Oriented Programming in Java with clear examples.',
+      thumbnail: 'https://img.youtube.com/vi/7W4N1LKJoOw/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/7W4N1LKJoOw'
+    },
+    {
+      id: 'VlpiSfdF45s', // New
+      title: 'Java Full Course for Beginners',
+      desc: 'Learn Java in one video. This 12-hour course covers everything you need.',
+      thumbnail: 'https://img.youtube.com/vi/VlpiSfdF45s/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/VlpiSfdF45s'
+    },
+    {
+      id: 's-n93t-S-jk', // New
+      title: 'Spring Boot Tutorial for Beginners',
+      desc: 'Learn Spring Boot from scratch. Build a full backend REST API.',
+      thumbnail: 'https://img.youtube.com/vi/s-n93t-S-jk/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/s-n93t-S-jk'
+    },
+    {
+      id: 'RJ5pNfGfdkY',
+      title: 'Java Data Structures and Algorithms',
+      desc: 'Explore key data structures and algorithms implemented in Java.',
+      thumbnail: 'https://img.youtube.com/vi/RJ5pNfGfdkY/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/RJ5pNfGfdkY'
+    },
+    {
+      id: 't1-YZ6bF-g0',
+      title: 'Java Streams API Tutorial',
+      desc: 'Learn Java Streams and functional programming features in this tutorial.',
+      thumbnail: 'https://img.youtube.com/vi/t1-YZ6bF-g0/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/t1-YZ6bF-g0'
+    },
+    {
+      id: 'L3-q_O6I1Fw', // New
+      title: 'JavaFX Tutorial (Full Course)',
+      desc: 'Build modern GUI applications with JavaFX. A complete tutorial by Bro Code.',
+      thumbnail: 'https://img.youtube.com/vi/L3-q_O6I1Fw/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/L3-q_O6I1Fw'
+    },
+    {
+      id: 'G-S8-Qk3mHk', // New
+      title: 'Java Exception Handling',
+      desc: 'Learn how to handle errors and exceptions in your Java code with try-catch blocks.',
+      thumbnail: 'https://img.youtube.com/vi/G-S8-Qk3mHk/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/G-S8-Qk3mHk'
+    },
+    {
+      id: '14J1J5t-8Ng',
+      title: 'Build a Java GUI Application',
+      desc: 'Step-by-step guide to developing GUI apps using Java Swing framework.',
+      thumbnail: 'https://img.youtube.com/vi/14J1J5t-8Ng/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/14J1J5t-8Ng'
+    },
+    {
+      id: '6p-QwldzDq4',
+      title: 'Deep Dive into Java Lambdas',
+      desc: 'Master Java Lambda expressions for functional programming.',
+      thumbnail: 'https://img.youtube.com/vi/6p-QwldzDq4/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/6p-QwldzDq4'
+    },
+    {
+      id: '8T5__zDxSol',
+      title: 'Java Multithreading Tutorial',
+      desc: 'Learn multithreading concepts and how to implement concurrency.',
+      thumbnail: 'https://img.youtube.com/vi/8T5__zDxSol/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/8T5__zDxSol'
+    },
+    {
+      id: 'aF18o-sN7jE', // New
+      title: 'Java Generics Explained',
+      desc: 'An in-depth explanation of Generics in Java by Angelika Langer.',
+      thumbnail: 'https://img.youtube.com/vi/aF18o-sN7jE/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/aF18o-sN7jE'
+    },
+    {
+      id: 'mUx2HxROdtk',
+      title: 'Java for Competitive Programming',
+      desc: 'Use Java effectively for coding competitions.',
+      thumbnail: 'https://img.youtube.com/vi/mUx2HxROdtk/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/mUx2HxROdtk'
+    },
+    {
+      id: 'O-CFqoJ4UeU',
+      title: 'Advanced Java Collections',
+      desc: 'Deep dive into Java Collections Framework.',
+      thumbnail: 'https://img.youtube.com/vi/O-CFqoJ4UeU/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/O-CFqoJ4UeU'
+    },
+    {
+      id: '8m-0-nK45-s', // New
+      title: 'Java Concurrency Tutorial',
+      desc: 'Understand concurrency and parallel programming in Java.',
+      thumbnail: 'https://img.youtube.com/vi/8m-0-nK45-s/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/8m-0-nK45-s'
+    },
+    {
+      id: '-XChF765rhk',
+      title: 'Java Reflection API',
+      desc: 'Understanding Reflection in Java for dynamic programming.',
+      thumbnail: 'https://img.youtube.com/vi/-XChF765rhk/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/-XChF765rhk'
+    },
+    {
+      id: 'FB-n-iNFG4I', // New
+      title: 'Java Networking (Socket Programming)',
+      desc: 'Learn how to build client-server applications using Sockets in Java.',
+      thumbnail: 'https://img.youtube.com/vi/FB-n-iNFG4I/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/FB-n-iNFG4I'
+    },
+    {
+      id: '7Y6e_HtYSm4',
+      title: 'Java JFrame & Swing Tutorial',
+      desc: 'Create desktop applications with Java Swing.',
+      thumbnail: 'https://img.youtube.com/vi/7Y6e_HtYSm4/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/7Y6e_HtYSm4'
+    },
+    {
+      id: 'eJEwWkgiO4Y',
+      title: 'Java File Handling',
+      desc: 'Work with files in Java, reading and writing.',
+      thumbnail: 'https://img.youtube.com/vi/eJEwWkgiO4Y/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/eJEwWkgiO4Y'
+    },
+    {
+      id: '_fJ-00e2CqU', // New
+      title: 'Java 21 Features Explained',
+      desc: 'Explore the new features in Java 21, including virtual threads and more.',
+      thumbnail: 'https://img.youtube.com/vi/_fJ-00e2CqU/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/_fJ-00e2CqU'
+    },
+    {
+      id: '0itzZZ0VTI4',
+      title: 'Java JDBC & Database Connectivity',
+      desc: 'Connect Java apps with databases using JDBC.',
+      thumbnail: 'https://img.youtube.com/vi/0itzZZ0VTI4/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/0itzZZ0VTI4'
+    },
+    {
+      id: 'Ke-jJt-A-sA', // New
+      title: 'Maven Tutorial for Beginners',
+      desc: 'Learn the most popular Java build tool, Maven, in 30 minutes.',
+      thumbnail: 'https://img.youtube.com/vi/Ke-jJt-A-sA/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/Ke-jJt-A-sA'
+    },
+    {
+      id: 'MQRenxSI7VQ',
+      title: 'Java Virtual Machine Explained',
+      desc: 'Learn how JVM works under the hood.',
+      thumbnail: 'https://img.youtube.com/vi/MQRenxSI7VQ/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/MQRenxSI7VQ'
+    },
+    {
+      id: 'w-G0-zQo70A', // New
+      title: 'JUnit Tutorial for Beginners',
+      desc: 'Start writing unit tests for your Java applications using JUnit 5.',
+      thumbnail: 'https://img.youtube.com/vi/w-G0-zQo70A/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/w-G0-zQo70A'
+    },
+    {
+      id: '1aN2aV-H-1k',
+      title: 'Java Serialization & Deserialization',
+      desc: 'Persist Java objects with serialization.',
+      thumbnail: 'https://img.youtube.com/vi/1aN2aV-H-1k/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/1aN2aV-H-1k'
+    },
+    {
+      id: 'qg2-h-1nE3c', // New
+      title: 'Git & GitHub for Beginners',
+      desc: 'Learn Git and GitHub - essential tools for any Java developer.',
+      thumbnail: 'https://img.youtube.com/vi/qg2-h-1nE3c/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/qg2-h-1nE3c'
+    },
+    {
+      id: 'FLDZmj6U7OQ',
+      title: 'Java Annotations Tutorial',
+      desc: 'Learn about annotations and their usage.',
+      thumbnail: 'https://img.youtube.com/vi/FLDZmj6U7OQ/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/FLDZmj6U7OQ'
+    },
+    {
+      id: '9n5y2Q2-s8A', // New
+      title: 'Java vs Python - Which to Learn?',
+      desc: 'An objective comparison of two of the most popular programming languages.',
+      thumbnail: 'https://img.youtube.com/vi/9n5y2Q2-s8A/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/9n5y2Q2-s8A'
+    },
+    {
+      id: 'X0Hv13PpW9g',
+      title: 'Java Security & Cryptography',
+      desc: 'Secure your Java applications.',
+      thumbnail: 'https://img.youtube.com/vi/X0Hv13PpW9g/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/X0Hv13PpW9g'
+    },
+    {
+      id: 'bm0Iq-Zb-A8', // New
+      title: 'Design Patterns in Java',
+      desc: 'Learn common software design patterns with Java examples. (Singleton, Factory, etc.)',
+      thumbnail: 'https://img.youtube.com/vi/bm0Iq-Zb-A8/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/bm0Iq-Zb-A8'
+    },
+    {
+      id: 'nKuloPWboBY',
+      title: 'Javabytecode Explained',
+      desc: 'Understand Java bytecode and how JVM executes code.',
+      thumbnail: 'https://img.youtube.com/vi/nKuloPWboBY/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/nKuloPWboBY'
+    },
+    {
+      id: '3-2P1G_w4Cg', // New
+      title: 'Spring Boot 3 Full Course',
+      desc: 'Learn the latest version of Spring Boot with Amigoscode.',
+      thumbnail: 'https://img.youtube.com/vi/3-2P1G_w4Cg/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/3-2P1G_w4Cg'
+    },
+    {
+      id: 'S8Wzv4Wccl4',
+      title: 'Java Best Practices & Tips',
+      desc: 'Optimize your Java code and coding practices.',
+      thumbnail: 'https://img.youtube.com/vi/S8Wzv4Wccl4/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/S8Wzv4Wccl4'
+    },
+    {
+      id: '5b-NUP9-00E', // New
+      title: 'Java Unit Testing with JUnit & Mockito',
+      desc: 'Master unit testing in Java using JUnit 5 and Mockito.',
+      thumbnail: 'https://img.youtube.com/vi/5b-NUP9-00E/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/5b-NUP9-00E'
+    },
+    {
+      id: 'ndU0qTRPZH4',
+      title: 'Java Stream API in Depth',
+      desc: 'Advanced usage of Java Stream API.',
+      thumbnail: 'https://img.youtube.com/vi/ndU0qTRPZH4/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/ndU0qTRPZH4'
+    },
+    {
+      id: '0s1n-al-s0w', // New
+      title: 'Java OOPs Concepts in One Video',
+      desc: 'Learn all Java Object Oriented Programming concepts from Apna College.',
+      thumbnail: 'https://img.youtube.com/vi/0s1n-al-s0w/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/0s1n-al-s0w'
+    },
+    {
+      id: 'bL-V-M-i_aY', // New
+      title: 'What\'s New in Java 17',
+      desc: 'A look at the features of Java 17 (LTS) from JetBrains.',
+      thumbnail: 'https://img.youtube.com/vi/bL-V-M-i_aY/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/bL-V-M-i_aY'
+    },
+    {
+      id: '9-u_G5-p3wY', // New
+      title: 'Java 8 Streams and Lambdas',
+      desc: 'A deep dive into functional programming with Java 8 by Venkat Subramaniam.',
+      thumbnail: 'https://img.youtube.com/vi/9-u_G5-p3wY/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/9-u_G5-p3wY'
+    },
+    {
+      id: '996-u-C1SOE', // New
+      title: 'Java Recursion Tutorial',
+      desc: 'Understand the concept of recursion in Java with clear examples.',
+      thumbnail: 'https://img.youtube.com/vi/996-u-C1SOE/maxresdefault.jpg',
+      videoUrl: 'https://www.youtube.com/embed/996-u-C1SOE'
+    }
+  ];
+
+  const searchInput = document.getElementById('searchInput');
+  const searchBtn = document.getElementById('searchBtn');
+  const resultsDiv = document.getElementById('results');
+  const modal = document.getElementById('videoModal');
+  const modalCloseBtn = modal.querySelector('.modal-close');
+  const youtubePlayerContainer = document.getElementById('youtube-player-container');
+
+  // Function to save video progress to localStorage
+  function saveVideoProgress(videoId, currentTime, duration) {
+    if (duration > 0) {
+      const progressPercentage = (currentTime / duration) * 100;
+      localStorage.setItem(`videoProgress_${videoId}`, progressPercentage.toFixed(2));
+      updateCardProgressBar(videoId, progressPercentage);
+
+      // Log progress for debugging
+      console.log(`Saved progress for ${videoId}: ${progressPercentage.toFixed(2)}% at ${currentTime}s`);
+    }
+  }
+
+  // Function to get video progress from localStorage
+  function getVideoProgress(videoId) {
+    const progress = localStorage.getItem(`videoProgress_${videoId}`);
+    return progress ? parseFloat(progress) : 0;
+  }
+
+  // Function to update a specific card's progress bar
+  function updateCardProgressBar(videoId, percentage) {
+    const card = document.querySelector(`.video-card[data-video-id="${videoId}"]`);
+    if (card) {
+      const progressBar = card.querySelector('.video-progress-bar');
+      const progressText = card.querySelector('.video-progress-text');
+      if (progressBar) {
+        progressBar.style.width = `${percentage}%`;
+        if (progressText) {
+          progressText.textContent = `${Math.round(percentage)}% Watched`;
+          // If 100% watched, make it distinct visually (optional)
+          if (percentage >= 95) { // Using 95% as "completed" threshold
+            progressBar.style.backgroundColor = '#28a745'; // Green for complete
+            progressText.textContent = 'Completed!';
+          } else {
+            progressBar.style.backgroundColor = '#f0a500'; // Original color
+          }
+        }
+      }
+    }
+  }
+
+  // Function to render video cards based on filtered videos
+  function renderVideos(videos) {
+    resultsDiv.innerHTML = '';
+    if (videos.length === 0) {
+      resultsDiv.innerHTML = '<p style="font-size:1.2rem; color:#f66;">No Java videos found. Try different keywords!</p>';
+      return;
+    }
+    videos.forEach((video, index) => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.setAttribute('data-video-id', video.id); // Add video ID for easy lookup
+      card.style.animation = `bounceInUp 0.5s ease forwards`;
+      card.style.animationDelay = `${index * 100}ms`;
+
+      const savedProgress = getVideoProgress(video.id);
+
+      card.innerHTML = `
+        <img src="${video.thumbnail}" alt="Thumbnail of ${video.title}" class="video-thumb" />
+        <div class="video-info">
+          <h3 class="video-title" title="${video.title}">${video.title}</h3>
+          <p class="video-desc">${video.desc}</p>
+          <span class="video-progress-text" style="${savedProgress > 0 ? 'display: block;' : ''}">${Math.round(savedProgress)}% Watched</span>
+        </div>
+        <div class="video-progress-container">
+          <div class="video-progress-bar" style="width: ${savedProgress}%;"></div>
+        </div>
+      `;
+      
+      // If completed, make the progress bar green initially
+      if (savedProgress >= 95) {
+        card.querySelector('.video-progress-bar').style.backgroundColor = '#28a745';
+        card.querySelector('.video-progress-text').textContent = 'Completed!';
+      }
+
+
+      // Click event to open modal
+      card.addEventListener('click', () => {
+        openVideoModal(video.id);
+      });
+
+      resultsDiv.appendChild(card);
+    });
+  }
+
+  // Function to filter videos by search term
+  function filterVideos(query) {
+    const lowerQuery = query.toLowerCase();
+    return demoJavaVideos.filter(video =>
+      video.title.toLowerCase().includes(lowerQuery) ||
+      video.desc.toLowerCase().includes(FtoLowerCase));
+  }
+
+  // YouTube Player event handlers
+  function onPlayerReady(event) {
+    // Player is ready, try to seek to saved position
+    const savedProgress = getVideoProgress(currentPlayingVideoId);
+    if (savedProgress > 0 && savedProgress < 95) { // Only seek if not almost completed
+      const duration = event.target.getDuration();
+      const startTime = (savedProgress / 100) * duration;
+      event.target.seekTo(startTime, true);
+    }
+    event.target.playVideo(); // Auto-play when ready
+  }
+
+  function onPlayerStateChange(event) {
+    const player = event.target;
+    // YT.PlayerState.PLAYING (1), PAUSED (2), ENDED (0)
+    if (event.data === YT.PlayerState.PLAYING) {
+      if (!progressInterval) {
+        progressInterval = setInterval(() => {
+          saveVideoProgress(currentPlayingVideoId, player.getCurrentTime(), player.getDuration());
+        }, 5000); // Save progress every 5 seconds while playing
+      }
+    } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+      saveVideoProgress(currentPlayingVideoId, player.getCurrentTime(), player.getDuration());
+      if (event.data === YT.PlayerState.ENDED) {
+        // Mark as 100% watched if ended
+        saveVideoProgress(currentPlayingVideoId, player.getDuration(), player.getDuration());
+      }
+    }
+  }
+
+  // Function to open modal to play selected video
+  function openVideoModal(videoId) {
+    currentPlayingVideoId = videoId;
+    modal.classList.add('active');
+    modal.focus();
+
+    // If player doesn't exist or not initialized, create it
+    if (!youtubePlayer && typeof YT !== 'undefined' && YT.Player) {
+        youtubePlayer = new YT.Player('youtube-player-container', {
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 1,
+                'rel': 0,
+                'start': 0 // Will be overridden by seekTo in onPlayerReady
+            },
+            events: {
+                'onReady': onPlayerReady,
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    } else if (youtubePlayer) {
+        // Player already exists, load new video
+        youtubePlayer.loadVideoById({
+            'videoId': videoId,
+            'startSeconds': 0 // Will be overridden by seekTo in onPlayerReady
+        });
+        youtubePlayer.playVideo();
+    } else {
+        console.error("YouTube IFrame Player API is not ready.");
+        // Fallback: If API not ready, simply embed a static iframe
+        youtubePlayerContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" style="width:100%; height:100%; border:none;"></iframe>`;
+    }
+  }
+
+  // Function to close modal and stop video
+  function closeVideoModal() {
+    modal.classList.remove('active');
+    if (youtubePlayer && youtubePlayer.stopVideo) {
+      youtubePlayer.stopVideo();
+      // Ensure current progress is saved one last time when closing
+      if (currentPlayingVideoId && youtubePlayer.getCurrentTime && youtubePlayer.getDuration) {
+          saveVideoProgress(currentPlayingVideoId, youtubePlayer.getCurrentTime(), youtubePlayer.getDuration());
+      }
+    }
+    // Clear interval when modal is closed
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
+    currentPlayingVideoId = null; // Clear the current video ID
+  }
+
+  // Search action triggered by button or enter key
+  function handleSearch() {
+    const query = searchInput.value.trim();
+    if (query.length === 0) {
+      renderVideos(demoJavaVideos);
+      return;
+    }
+    const filtered = filterVideos(query);
+    renderVideos(filtered);
+  }
+
+  // Event listeners
+  searchBtn.addEventListener('click', handleSearch);
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  });
+  modalCloseBtn.addEventListener('click', closeVideoModal);
+  modal.addEventListener('click', e => {
+    if (e.target === modal) closeVideoModal();
+  });
+
+  // Initial render all videos when the DOM is loaded
+  document.addEventListener('DOMContentLoaded', () => {
+    renderVideos(demoJavaVideos);
+  });
+</script>
+</body>
+</html>

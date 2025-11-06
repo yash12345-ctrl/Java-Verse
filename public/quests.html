@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaVerse - Quest Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        :root { --glow-cyan: #00ffff; --glow-green: #00ff00; --glow-red: #ff0000; --glow-yellow: #fffb00; --background-dark: #0c0a18; --terminal-bg: rgba(12, 22, 32, 0.8);}
+        body {font-family: 'Roboto Mono', monospace; background-color: var(--background-dark); color: var(--glow-cyan); overflow-x: hidden; text-shadow: 0 0 3px var(--glow-cyan);}
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        @keyframes scanlines { 0%{background-position:0 0;}100%{background-position:0 50px;} }
+        @keyframes text-flicker {0%,100%{opacity:1;}50%{opacity:0.7;}}
+        @keyframes glitch {2%,64%{transform:translate(2px,0) skew(0deg);}4%,60%{transform:translate(-2px,0) skew(0deg);}62%{transform:translate(0,0) skew(5deg);}}
+        @keyframes fade-in {from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+        @keyframes fade-out {to{opacity:0;transform:translateY(-20px);display:none;}}
+        .scanlines-effect::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background-image:linear-gradient(rgba(0,0,0,0.3) 50%,transparent 50%);background-size:100% 4px;animation:scanlines 0.2s linear infinite;pointer-events:none;z-index:1;}
+        .player-hud{background-color:var(--terminal-bg);border-bottom:2px solid var(--glow-cyan);backdrop-filter:blur(10px);animation:text-flicker 3s infinite;}
+        .xp-bar-fill{background-color:var(--glow-cyan);box-shadow:0 0 10px var(--glow-cyan);transition:width 0.5s cubic-bezier(0.25,1,0.5,1);}
+        .difficulty-selector{animation:fade-in 0.5s forwards;}
+        .difficulty-btn{border:2px solid;transition:all 0.3s ease;text-shadow:0 0 8px;}
+        .easy-btn{border-color:var(--glow-green);color:var(--glow-green);box-shadow:0 0 15px var(--glow-green);}
+        .easy-btn:hover{background-color:rgba(0,255,0,0.2);transform:scale(1.05);}
+        .medium-btn{border-color:var(--glow-yellow);color:var(--glow-yellow);box-shadow:0 0 15px var(--glow-yellow);}
+        .medium-btn:hover{background-color:rgba(255,251,0,0.2);transform:scale(1.05);}
+        .hard-btn{border-color:var(--glow-red);color:var(--glow-red);box-shadow:0 0 15px var(--glow-red);}
+        .hard-btn:hover{background-color:rgba(255,0,0,0.2);transform:scale(1.05);}
+        #quest-section{display:none;}
+        #quest-section.active{display:block;animation:fade-in 0.5s forwards;}
+        .quest-node{background-color:var(--terminal-bg);border:2px solid;transition:all 0.3s ease;cursor:pointer;}
+        .quest-node.unlocked:hover{transform:scale(1.05);}
+        .quest-node.easy{border-color:var(--glow-green);}
+        .quest-node.easy.unlocked:hover{background-color:rgba(0,255,0,0.2);}
+        .quest-node.medium{border-color:var(--glow-yellow);}
+        .quest-node.medium.unlocked:hover{background-color:rgba(255,251,0,0.2);}
+        .quest-node.hard{border-color:var(--glow-red);}
+        .quest-node.hard.unlocked:hover{background-color:rgba(255,0,0,0.2);}
+        .quest-node.completed{background-color:rgba(0,255,255,0.2);border-color:var(--glow-cyan);color:var(--glow-cyan);cursor:not-allowed;text-shadow:0 0 5px var(--glow-cyan);}
+        .quest-node.locked{background-color:rgba(50,50,50,0.5);border-color:#555;color:#777;cursor:not-allowed;text-shadow:none;}
+        .modal-overlay{background-color:rgba(12,10,24,0.8);backdrop-filter:blur(8px);z-index:999;opacity:0;visibility:hidden;transition:opacity 0.4s ease,visibility 0.4s ease;}
+        .modal-overlay.active{opacity:1;visibility:visible;}
+        .modal-content{background-color:var(--terminal-bg);border:2px solid var(--glow-cyan);box-shadow:0 0 30px rgba(0,255,255,0.3);transform:scale(0.9);transition:transform 0.4s cubic-bezier(0.25,1,0.5,1);}
+        .modal-overlay.active .modal-content{transform:scale(1);}
+        .answer-option{border:2px solid var(--glow-cyan);transition:background-color 0.2s;}
+        .answer-option:hover{background-color:rgba(0,255,255,0.2);}
+        .correct{animation:flash-green 0.5s;}
+        @keyframes flash-green {50%{background-color:var(--glow-green);color:#0c0a18;text-shadow:none;}}
+        .incorrect{animation:flash-red 0.5s;}
+        @keyframes flash-red {50%{background-color:var(--glow-red);color:#0c0a18;text-shadow:none;}}
+        .glitch-screen{animation:glitch 0.3s;}
+        .hidden-initially{display:none;}
+    </style>
+</head>
+<body class="antialiased">
+    <canvas id="matrix-canvas" class="fixed top-0 left-0 w-full h-full z-0 opacity-50"></canvas>
+    <div id="main-container" class="relative z-10 min-h-screen flex flex-col scanlines-effect">
+        <header class="player-hud sticky top-0 z-50 p-4">
+            <div class="container mx-auto flex justify-between items-center">
+                <div id="header-title-container">
+                    <a href="index.html" id="header-title" class="font-orbitron text-2xl tracking-widest text-white hover:text-cyan-300">&lt; JavaVerse // Sector_Select</a>
+                </div>
+                <div class="flex items-center gap-6 text-lg">
+                    <span>LVL: <span id="player-level">5</span></span>
+                    <div class="w-64">
+                        <div class="flex justify-between text-sm"><span>XP</span><span><span id="player-xp">8950</span> / 12000</span></div>
+                        <div class="w-full bg-cyan-900 h-3 mt-1 border border-cyan-700"><div id="xp-bar" class="xp-bar-fill h-full"></div></div>
+                    </div>
+                    <span>RANK: <span class="font-bold text-white">Code Initiate</span></span>
+                </div>
+            </div>
+        </header>
+        <main id="difficulty-selector" class="difficulty-selector flex-grow container mx-auto p-8 flex flex-col justify-center items-center">
+            <h1 class="font-orbitron text-5xl text-center mb-4">Select Mission Sector</h1>
+            <p class="text-center text-xl mb-12 text-cyan-300">[Each sector contains unique data nodes to decrypt]</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
+                <button data-difficulty="easy" class="difficulty-btn easy-btn p-8 rounded-lg">
+                    <h2 class="text-3xl font-orbitron mb-2">SECTOR 1: EASY</h2>
+                    <p class="text-lg">Recommended for new initiates. Covers foundational syntax and core principles.</p>
+                </button>
+                <button data-difficulty="medium" class="difficulty-btn medium-btn p-8 rounded-lg">
+                    <h2 class="text-3xl font-orbitron mb-2">SECTOR 2: MEDIUM</h2>
+                    <p class="text-lg">For apprentices ready for a challenge. Focuses on loops, arrays, and basic OOP.</p>
+                </button>
+                <button data-difficulty="hard" class="difficulty-btn hard-btn p-8 rounded-lg">
+                    <h2 class="text-3xl font-orbitron mb-2">SECTOR 3: HARD</h2>
+                    <p class="text-lg">For seasoned coders. Explores advanced OOP, exceptions, and data structures.</p>
+                </button>
+            </div>
+        </main>
+        <section id="quest-section" class="hidden-initially flex-grow container mx-auto p-8">
+            <h1 id="quest-grid-title" class="font-orbitron text-4xl text-center mb-2"></h1>
+            <p class="text-center text-lg mb-8 text-green-400">[Decrypt nodes to reveal Java secrets]</p>
+            <div id="quest-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+        </section>
+    </div>
+    <div id="question-modal" class="modal-overlay fixed inset-0 flex items-center justify-center p-4">
+        <div id="modal-content" class="modal-content w-full max-w-3xl p-6 rounded-lg">
+            <p class="text-sm text-green-400">[Incoming Transmission...]</p>
+            <h2 id="question-title" class="text-2xl font-bold mb-4 font-orbitron"></h2>
+            <p id="question-text" class="text-lg mb-6"></p>
+            <div id="answer-options" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <div id="feedback-text" class="mt-6 min-h-[5rem] text-center text-lg font-bold"></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // CHANGE: Removed API call and hardcoded quests to ensure the game works without an API key.
+            const ALL_QUESTS = {
+                "easy": [
+                    {"id":1,"difficulty":"easy","title":"Main Method","question":"Which method is the entry point for any Java application?","options":["start()","main()","run()","execute()"],"answer":1,"xp":50,"explanation":"The `public static void main(String[] args)` method is the required starting point."},
+                    {"id":2,"difficulty":"easy","title":"Integer Type","question":"Which primitive data type is used to store whole numbers like 7 or -12?","options":["double","char","int","boolean"],"answer":2,"xp":50,"explanation":"'int' is used for 32-bit integer values."}, 
+                    {"id":3,"difficulty":"easy","title":"Byte Size","question":"What is the size of a byte in Java?","options":["4 bits","8 bits","16 bits","32 bits"],"answer":1,"xp":50,"explanation":"A byte in Java consists of 8 bits."},
+                    {"id":4,"difficulty":"easy","title":"String Immutability","question":"Which class in Java is immutable?","options":["StringBuilder","StringBuffer","String","CharArray"],"answer":2,"xp":50,"explanation":"The String class is immutable in Java."},
+                    {"id":5,"difficulty":"easy","title":"Keyword for Inheritance","question":"Which keyword is used to inherit a class in Java?","options":["inherits","extends","implements","super"],"answer":1,"xp":50,"explanation":"The 'extends' keyword is used for class inheritance."},
+                    {"id":6,"difficulty":"easy","title":"Loop Execution","question":"Which loop executes at least once even if the condition is false?","options":["for","while","do-while","foreach"],"answer":2,"xp":50,"explanation":"The 'do-while' loop executes the body first, then checks the condition."},
+                    {"id":7,"difficulty":"easy","title":"Boolean Type","question":"Which keyword is used to declare a variable that can hold true or false?","options":["int","boolean","bit","bool"],"answer":1,"xp":50,"explanation":"The 'boolean' type stores logical true or false values."},
+                    {"id":8,"difficulty":"easy","title":"Equality Operator","question":"Which operator checks equality for primitive types?","options":["=","==","equals()","==="],"answer":1,"xp":50,"explanation":"The '==' operator checks equality of primitive values."},
+                    {"id":9,"difficulty":"easy","title":"Scanner Class","question":"Which class is used to take user input from the console?","options":["InputStream","BufferedReader","Scanner","System"],"answer":2,"xp":50,"explanation":"The 'Scanner' class from java.util is used for console input."},
+                    {"id":10,"difficulty":"easy","title":"Access Modifier","question":"Which of these is not a Java access modifier?","options":["private","protected","public","package"],"answer":3,"xp":50,"explanation":"'package' is not a valid access modifier."},
+                    {"id":11,"difficulty":"easy","title":"Switch Statement","question":"Which keyword is used inside a switch block to stop fall-through?","options":["stop","exit","break","return"],"answer":2,"xp":50,"explanation":"The 'break' keyword exits from the switch block."},
+                    {"id":12,"difficulty":"easy","title":"Exception Handling","question":"Which block is used to handle exceptions?","options":["try-catch","if-else","for","while"],"answer":0,"xp":50,"explanation":"Exceptions are handled using try-catch blocks."},
+                    {"id":13,"difficulty":"easy","title":"Default Value","question":"What is the default value of an int variable in a class?","options":["0","null","undefined","NaN"],"answer":0,"xp":50,"explanation":"The default value of int is 0."},
+                    {"id":14,"difficulty":"easy","title":"Static Keyword","question":"Which keyword makes a method belong to the class rather than an instance?","options":["this","final","static","super"],"answer":2,"xp":50,"explanation":"'static' methods belong to the class, not an object."},
+                    {"id":15,"difficulty":"easy","title":"Method Override Restriction","question":"Which keyword prevents a method from being overridden?","options":["final","static","private","native"],"answer":0,"xp":50,"explanation":"A 'final' method cannot be overridden in a subclass."},
+                    {"id":16,"difficulty":"easy","title":"String Conversion","question":"Which method converts a string to an integer?","options":["String.toInt()","Integer.parseInt()","parseInteger()","toInteger()"],"answer":1,"xp":50,"explanation":"Integer.parseInt() converts string to int."},
+                    {"id":17,"difficulty":"easy","title":"Comment Syntax","question":"How do you write a single-line comment in Java?","options":["/* comment */","// comment","# comment","<!-- comment -->"],"answer":1,"xp":50,"explanation":"Single-line comments begin with //."},
+                    {"id":18,"difficulty":"easy","title":"Object Class","question":"Which class is the superclass of all classes in Java?","options":["Root","Base","Object","Parent"],"answer":2,"xp":50,"explanation":"All Java classes inherit from java.lang.Object."},
+                    {"id":19,"difficulty":"easy","title":"Array Length","question":"Which property gives the length of an array?","options":["size()","length","length()","count()"],"answer":1,"xp":50,"explanation":"Arrays use the length field, not a method."},
+                    {"id":20,"difficulty":"easy","title":"Loop Control","question":"Which keyword skips the current iteration in a loop?","options":["break","return","skip","continue"],"answer":3,"xp":50,"explanation":"'continue' skips to the next iteration."},
+                    {"id":21,"difficulty":"easy","title":"Arithmetic Exception","question":"What happens when you divide an integer by zero?","options":["Returns zero","Throws ArithmeticException","Throws NullPointerException","Returns NaN"],"answer":1,"xp":50,"explanation":"Division by zero throws ArithmeticException."},
+                    {"id":22,"difficulty":"easy","title":"Final Variable","question":"Which keyword defines a constant value?","options":["const","final","static","immutable"],"answer":1,"xp":50,"explanation":"'final' variables cannot be reassigned."},
+                    {"id":23,"difficulty":"easy","title":"Polymorphism","question":"What allows the same method name to perform different tasks?","options":["Inheritance","Encapsulation","Polymorphism","Abstraction"],"answer":2,"xp":50,"explanation":"Polymorphism enables methods to behave differently based on context."},
+                    {"id":24,"difficulty":"easy","title":"Wrapper Class","question":"Which wrapper class corresponds to int?","options":["Integer","Int","Number","Object"],"answer":0,"xp":50,"explanation":"The wrapper for int is Integer."},
+                    {"id":25,"difficulty":"easy","title":"Package Import","question":"Which keyword is used to include a package?","options":["use","include","import","package"],"answer":2,"xp":50,"explanation":"The 'import' keyword allows using classes from other packages."},
+                    {"id":26,"difficulty":"easy","title":"Main Modifier","question":"Which of the following is required for the main method?","options":["public static","private final","protected static","static final"],"answer":0,"xp":50,"explanation":"The main method must be public and static."},
+                    {"id":27,"difficulty":"easy","title":"JVM Role","question":"What executes Java bytecode?","options":["JDK","JRE","JVM","JIT"],"answer":2,"xp":50,"explanation":"The JVM executes compiled bytecode."},
+                    {"id":28,"difficulty":"easy","title":"Garbage Collection","question":"Which method requests garbage collection?","options":["gc.collect()","System.gc()","Runtime.delete()","Memory.free()"],"answer":1,"xp":50,"explanation":"System.gc() suggests that the JVM perform garbage collection."},
+                    {"id":29,"difficulty":"easy","title":"String Comparison","question":"Which method compares two strings for equality?","options":["==","equals()","compareTo()","match()"],"answer":1,"xp":50,"explanation":"The equals() method checks string content equality."},
+                    {"id":30,"difficulty":"easy","title":"Loop Type","question":"Which loop is best used when the number of iterations is known?","options":["for","while","do-while","foreach"],"answer":0,"xp":50,"explanation":"A 'for' loop is ideal when the iteration count is known."},
+                    {"id":31,"difficulty":"easy","title":"StringBuilder","question":"Which class is used to create mutable strings?","options":["String","StringBuilder","StringBuffer","MutableString"],"answer":1,"xp":50,"explanation":"StringBuilder allows mutable string operations."},
+                    {"id":32,"difficulty":"easy","title":"ArrayList Import","question":"From which package is ArrayList imported?","options":["java.lang","java.util","java.io","java.net"],"answer":1,"xp":50,"explanation":"ArrayList belongs to java.util package."},
+                    {"id":33,"difficulty":"easy","title":"Constructor Name","question":"What is the name of a constructor in Java?","options":["Same as class","init()","constructor()","className()"],"answer":0,"xp":50,"explanation":"Constructors must have the same name as the class."},
+                    {"id":34,"difficulty":"easy","title":"Interface Keyword","question":"Which keyword defines an interface?","options":["interface","Interface","implements","abstract"],"answer":0,"xp":50,"explanation":"The 'interface' keyword declares an interface."},
+                    {"id":35,"difficulty":"easy","title":"Implements Keyword","question":"Which keyword is used by a class to use an interface?","options":["extends","inherits","implements","interface"],"answer":2,"xp":50,"explanation":"A class implements an interface using 'implements'."},
+                    {"id":36,"difficulty":"easy","title":"Abstract Method","question":"Which keyword defines an abstract class method?","options":["virtual","undefined","abstract","interface"],"answer":2,"xp":50,"explanation":"Abstract methods use the 'abstract' keyword."},
+                    {"id":37,"difficulty":"easy","title":"Method Overloading","question":"What differentiates overloaded methods?","options":["Return type","Access modifier","Method name","Parameter list"],"answer":3,"xp":50,"explanation":"Overloaded methods have different parameter lists."},
+                    {"id":38,"difficulty":"easy","title":"Package Declaration","question":"Which keyword defines a package?","options":["package","namespace","import","define"],"answer":0,"xp":50,"explanation":"The 'package' keyword declares a package at the top of a file."},
+                    {"id":39,"difficulty":"easy","title":"Type Casting","question":"Which symbol is used for casting in Java?","options":["[]","()","{}","<>"],"answer":1,"xp":50,"explanation":"Type casting uses parentheses syntax like (int)."},
+                    {"id":40,"difficulty":"easy","title":"Default Constructor","question":"What is a default constructor?","options":["One with parameters","One without parameters","Static method","Abstract constructor"],"answer":1,"xp":50,"explanation":"Default constructor has no parameters."},
+                    {"id":41,"difficulty":"easy","title":"Break Keyword","question":"What is the use of the 'break' keyword?","options":["Skip iteration","End loop or switch","Exit program","Pause thread"],"answer":1,"xp":50,"explanation":"'break' terminates a loop or switch case."},
+                    {"id":42,"difficulty":"easy","title":"Continue Keyword","question":"What does 'continue' do in a loop?","options":["Stops loop","Skips iteration","Ends method","Breaks all loops"],"answer":1,"xp":50,"explanation":"'continue' skips current iteration."},
+                    {"id":43,"difficulty":"easy","title":"JDK Full Form","question":"What does JDK stand for?","options":["Java Development Kit","Java Design Key","Java Data Keeper","Java Deployment Kernel"],"answer":0,"xp":50,"explanation":"JDK means Java Development Kit."},
+                    {"id":44,"difficulty":"easy","title":"JRE Meaning","question":"What is JRE in Java?","options":["Runtime Environment","Compiler","Editor","Debugger"],"answer":0,"xp":50,"explanation":"JRE stands for Java Runtime Environment."},
+{"id":45,"difficulty":"easy","title":"Bytecode","question":"What is Java bytecode?","options":["Machine code","Source code","Intermediate code","Assembly code"],"answer":2,"xp":50,"explanation":"Java compiles source to bytecode executed by JVM."},
+{"id":46,"difficulty":"easy","title":"String Concatenation","question":"Which operator concatenates strings?","options":["+","&","*","%"],"answer":0,"xp":50,"explanation":"The '+' operator joins strings."},
+{"id":47,"difficulty":"easy","title":"Array Index","question":"What is the first index of an array in Java?","options":["1","0","-1","Depends on array type"],"answer":1,"xp":50,"explanation":"Java arrays are zero-indexed."},
+{"id":48,"difficulty":"easy","title":"Ternary Operator","question":"Which operator is used as a ternary conditional?","options":["?:","if-else","==","||"],"answer":0,"xp":50,"explanation":"The ternary operator is written as condition ? trueValue : falseValue."},
+{"id":49,"difficulty":"easy","title":"Logical AND","question":"Which operator represents logical AND?","options":["&&","&","and","||"],"answer":0,"xp":50,"explanation":"'&&' is logical AND."},
+{"id":50,"difficulty":"easy","title":"Logical OR","question":"Which operator represents logical OR?","options":["||","|","or","&&"],"answer":0,"xp":50,"explanation":"'||' is logical OR."},
+{"id":51,"difficulty":"easy","title":"InstanceOf Keyword","question":"Which keyword checks object type?","options":["isType","instance","instanceof","typeOf"],"answer":2,"xp":50,"explanation":"The 'instanceof' operator checks if an object is a type."},
+{"id":52,"difficulty":"easy","title":"Class Loader","question":"Which component loads classes at runtime?","options":["JVM","ClassLoader","Compiler","JIT"],"answer":1,"xp":50,"explanation":"ClassLoader loads classes dynamically."},
+{"id":53,"difficulty":"easy","title":"Object Creation","question":"Which keyword creates an object?","options":["create","make","new","construct"],"answer":2,"xp":50,"explanation":"The 'new' keyword allocates memory for objects."},
+{"id":54,"difficulty":"easy","title":"Finalize Method","question":"Which method is called before object destruction?","options":["dispose()","delete()","finalize()","end()"],"answer":2,"xp":50,"explanation":"finalize() is called by garbage collector before object removal."},
+{"id":55,"difficulty":"easy","title":"Encapsulation","question":"Which concept hides internal details of objects?","options":["Inheritance","Abstraction","Encapsulation","Polymorphism"],"answer":2,"xp":50,"explanation":"Encapsulation hides data using private fields and getters/setters."},
+{"id":56,"difficulty":"easy","title":"Thread Class","question":"Which class is used to create threads?","options":["Runnable","Thread","Executor","Parallel"],"answer":1,"xp":50,"explanation":"Thread class is used for multithreading."},
+{"id":57,"difficulty":"easy","title":"Thread Start","question":"Which method starts thread execution?","options":["run()","execute()","start()","init()"],"answer":2,"xp":50,"explanation":"start() begins a new thread."},
+{"id":58,"difficulty":"easy","title":"Super Keyword","question":"Which keyword calls parent class constructor?","options":["this","parent","super","extends"],"answer":2,"xp":50,"explanation":"super() calls parent constructor."},
+{"id":59,"difficulty":"easy","title":"This Keyword","question":"What does 'this' refer to?","options":["Parent object","Child object","Current object","Superclass"],"answer":2,"xp":50,"explanation":"'this' refers to current instance."},
+{"id":60,"difficulty":"easy","title":"Nested Class","question":"A class inside another class is called?","options":["Sub-class","Inner class","Static class","Anonymous class"],"answer":1,"xp":50,"explanation":"A class declared within another is an inner class."}
+
+                ],
+                "medium": [
+
+                    {"id":1,"difficulty":"medium","title":"For Loop","question":"In a `for` loop `for(int i=0; i<5; i++)`, how many times will the loop body execute?","options":["4","5","6","0"],"answer":1,"xp":75,"explanation":"The loop runs for i = 0, 1, 2, 3, and 4, which is 5 times."},
+                    {"id":2,"difficulty":"medium","title":"Array Declaration","question":"Which is the correct way to declare an array of integers?","options":["int array[];","Array<int> array;","int{} array;","array<int> = new Array();"],"answer":0,"xp":75,"explanation":"`int[] array;` or `int array[];` are both valid syntax for declaring an integer array."},
+                    {"id":3,"difficulty":"medium","title":"Do-While Loop","question":"Which loop is guaranteed to execute its body at least once?","options":["for","while","do-while","enhanced for"],"answer":2,"xp":75,"explanation":"A `do-while` loop checks its condition after the first execution."},
+                    {"id":4,"difficulty":"medium","title":"String Length","question":"Which method of the String class returns its number of characters?","options":["length()","size()","count()","getLength()"],"answer":0,"xp":75,"explanation":"The `length()` method returns the length of a string."},
+                    {"id":5,"difficulty":"medium","title":"Constructor Role","question":"What is the primary purpose of a constructor in a class?","options":["To destroy an object","To perform calculations","To initialize a new object","To return a value"],"answer":2,"xp":75,"explanation":"Constructors initialize the state (instance variables) of a newly created object."},
+                    {"id":6,"difficulty":"medium","title":"Instantiating an Object","question":"Which keyword is used to create a new instance of an object?","options":["create","new","make","instance"],"answer":1,"xp":75,"explanation":"The `new` keyword allocates memory and creates a new object."},
+                    {"id":7,"difficulty":"medium","title":"Switch Statement","question":"Which keyword is used to exit from a `switch` case?","options":["stop","exit","break","continue"],"answer":2,"xp":75,"explanation":"The `break` keyword prevents fall-through to the next case in a switch block."},
+                    {"id":8,"difficulty":"medium","title":"Array Indexing","question":"In an array `int[] nums = {10, 20, 30}`, what is the value of `nums[1]`?","options":["10","20","30","undefined"],"answer":1,"xp":75,"explanation":"Java arrays are 0-indexed, so the element at index 1 is the second one, which is 20."},
+                    {"id":9,"difficulty":"medium","title":"String Comparison","question":"To compare the content of two String objects for equality, you should use:","options":["==",".equals()","!=",".compareTo()"],"answer":1,"xp":75,"explanation":"The `.equals()` method compares the actual character sequence, while `==` compares object references."},
+                    {"id":10,"difficulty":"medium","title":"Access Modifier","question":"Which access modifier makes a method accessible only within its own class?","options":["public","protected","private","default"],"answer":2,"xp":75,"explanation":"The `private` modifier provides the highest level of encapsulation."},
+                    {"id":11,"difficulty":"medium","title":"'this' Keyword","question":"What does the `this` keyword refer to inside a method?","options":["The superclass","The current object instance","A static variable","The method itself"],"answer":1,"xp":75,"explanation":"`this` is a reference to the current object whose method is being called."},
+                    {"id":12,"difficulty":"medium","title":"Method Overloading","question":"Method overloading is having multiple methods in the same class with the same name but...","options":["Different return types","Different access modifiers","Different implementations","Different parameters"],"answer":3,"xp":75,"explanation":"Overloaded methods are differentiated by the number and/or type of their parameters."},
+                    {"id":13,"difficulty":"medium","title":"Static Keyword","question":"A method or variable declared with the `static` keyword belongs to the...","options":["Object","Class","Heap","Package"],"answer":1,"xp":75,"explanation":"Static members belong to the class itself, not to any particular instance (object)."},
+                    {"id":14,"difficulty":"medium","title":"Get Char at Index","question":"Which String method returns the character at a specified index?","options":["getChar()","charAt()","characterAt()","index()"],"answer":1,"xp":75,"explanation":"`charAt(index)` returns the character at the given zero-based index."},
+                    {"id":15,"difficulty":"medium","title":"Break vs Continue","question":"In a loop, `continue` does what?","options":["Exits the loop entirely","Skips the rest of the current iteration","Deletes the loop variable","Pauses the loop"],"answer":1,"xp":75,"explanation":"`continue` skips to the next iteration, while `break` exits the loop completely."},
+                    {"id":16,"difficulty":"medium","title":"StringBuilder","question":"Which class is best for building a string that will be modified many times?","options":["String","StringBuffer","StringBuilder","StringMaker"],"answer":2,"xp":75,"explanation":"StringBuilder is mutable and more efficient for frequent modifications than String."},
+                    {"id":17,"difficulty":"medium","title":"Encapsulation","question":"Bundling data (variables) and methods together in a class is known as:","options":["Inheritance","Polymorphism","Abstraction","Encapsulation"],"answer":3,"xp":75,"explanation":"Encapsulation is a core OOP principle of data hiding and bundling."},
+                    {"id":18,"difficulty":"medium","title":"'super' Keyword","question":"The `super` keyword is used to call methods or constructors of the...","options":["Current class","Parent class","Child class","Interface"],"answer":1,"xp":75,"explanation":"`super` provides a reference to the immediate parent class."},
+                    {"id":19,"difficulty":"medium","title":"Type Casting","question":"What is the result of `(int) 3.9`?","options":["3.9","3","4","Error"],"answer":1,"xp":75,"explanation":"Casting a double to an int truncates the decimal part, it does not round."},
+                    {"id":20,"difficulty":"medium","title":"Enhanced For-Loop","question":"The enhanced for-loop is also known as the...","options":["for-each loop","infinite loop","do-while loop","for-all loop"],"answer":0,"xp":75,"explanation":"It's called a for-each loop because it iterates over each element in a collection or array."},
+                    {"id":21,"difficulty":"medium","title":"Static Block","question":"When is a static block executed in Java?","options":["After object creation","Before main()","After main()","During compilation"],"answer":1,"xp":100,"explanation":"Static blocks run once when the class is loaded before main()."},
+{"id":22,"difficulty":"medium","title":"Overriding Rule","question":"Which rule must be followed when overriding a method?","options":["Return type must differ","Access modifier must be private","Method name and parameters must match","Method must be static"],"answer":2,"xp":100,"explanation":"For overriding, method name and parameters must exactly match."},
+{"id":23,"difficulty":"medium","title":"Final Keyword","question":"What happens if a variable is declared final?","options":["Can be reassigned","Can’t be reassigned","Becomes private","Gets garbage collected"],"answer":1,"xp":100,"explanation":"Final variables cannot be reassigned once initialized."},
+{"id":24,"difficulty":"medium","title":"Polymorphism","question":"Which concept allows multiple methods with the same name but different behaviors?","options":["Inheritance","Polymorphism","Abstraction","Encapsulation"],"answer":1,"xp":100,"explanation":"Polymorphism lets objects behave differently based on runtime type."},
+{"id":25,"difficulty":"medium","title":"Checked Exception","question":"Which of these is a checked exception?","options":["NullPointerException","ArrayIndexOutOfBoundsException","IOException","ArithmeticException"],"answer":2,"xp":100,"explanation":"IOException is checked and must be handled or declared."},
+{"id":26,"difficulty":"medium","title":"try-with-resources","question":"What is the main advantage of try-with-resources?","options":["Automatic garbage collection","Automatic resource closing","Improved performance","No exceptions"],"answer":1,"xp":100,"explanation":"try-with-resources auto-closes resources implementing AutoCloseable."},
+{"id":27,"difficulty":"medium","title":"Enum","question":"What is an enum in Java?","options":["Class of constants","Variable group","Loop type","Annotation"],"answer":0,"xp":100,"explanation":"Enum defines a fixed set of constants in Java."},
+{"id":28,"difficulty":"medium","title":"HashMap Duplicate Keys","question":"What happens if you insert a duplicate key into a HashMap?","options":["Error occurs","Old value is replaced","Both values are stored","Key ignored"],"answer":1,"xp":100,"explanation":"HashMap replaces the old value with the new one for the same key."},
+{"id":29,"difficulty":"medium","title":"Synchronized Block","question":"What does a synchronized block prevent?","options":["Deadlocks","Concurrent access","Compilation","Garbage collection"],"answer":1,"xp":100,"explanation":"Synchronized blocks prevent concurrent access to shared resources."},
+{"id":30,"difficulty":"medium","title":"Volatile Keyword","question":"What does the 'volatile' keyword ensure?","options":["Thread safety","Visibility of changes across threads","Object immutability","Performance boost"],"answer":1,"xp":100,"explanation":"Volatile ensures variable changes are visible to all threads."},
+{"id":31,"difficulty":"medium","title":"Transient Keyword","question":"What does the transient keyword do?","options":["Makes variable static","Excludes variable from serialization","Makes variable final","Allows concurrency"],"answer":1,"xp":100,"explanation":"Transient variables are not serialized."},
+{"id":32,"difficulty":"medium","title":"Serialization Interface","question":"Which interface must be implemented for serialization?","options":["Serializable","Cloneable","Externalizable","Readable"],"answer":0,"xp":100,"explanation":"The Serializable interface marks a class for object serialization."},
+{"id":33,"difficulty":"medium","title":"super() and this()","question":"Can 'super()' and 'this()' be used in the same constructor?","options":["Yes","No","Only in static methods","Only with inheritance"],"answer":1,"xp":100,"explanation":"You can’t use both in the same constructor; one must be first."},
+{"id":34,"difficulty":"medium","title":"String vs StringBuilder","question":"Why is StringBuilder faster than String?","options":["Strings are immutable","Builder uses hashing","Strings use arrays","Builder is compiled differently"],"answer":0,"xp":100,"explanation":"StringBuilder is mutable; Strings create new objects each time."},
+{"id":35,"difficulty":"medium","title":"Inner Class Access","question":"Can an inner class access private members of the outer class?","options":["No","Yes","Only static members","Only protected members"],"answer":1,"xp":100,"explanation":"Inner classes have access to all members of their outer class."},
+{"id":36,"difficulty":"medium","title":"Static Method Override","question":"Can static methods be overridden?","options":["Yes","No","Only in abstract classes","Only in subclasses"],"answer":1,"xp":100,"explanation":"Static methods are hidden, not overridden."},
+{"id":37,"difficulty":"medium","title":"Default Methods in Interface","question":"Which Java version introduced default methods in interfaces?","options":["Java 6","Java 7","Java 8","Java 9"],"answer":2,"xp":100,"explanation":"Default and static methods in interfaces were added in Java 8."},
+{"id":38,"difficulty":"medium","title":"Lambda Expressions","question":"What do lambda expressions replace in Java 8?","options":["Inner classes","Anonymous classes","Abstract classes","Enums"],"answer":1,"xp":100,"explanation":"Lambdas are shorthand for anonymous classes with one method."},
+{"id":39,"difficulty":"medium","title":"Stream API","question":"Which package contains Stream API?","options":["java.io","java.util.stream","java.stream","java.util.io"],"answer":1,"xp":100,"explanation":"Stream API classes are in java.util.stream."},
+{"id":40,"difficulty":"medium","title":"Optional Class","question":"What is the purpose of the Optional class?","options":["Handle missing values","Store arrays","Support threads","Create enums"],"answer":0,"xp":100,"explanation":"Optional helps handle potential null values safely."},
+{"id":41,"difficulty":"medium","title":"Garbage Collector","question":"What does Java’s garbage collector do?","options":["Deletes files","Reclaims memory from unreachable objects","Stops JVM","Compiles code"],"answer":1,"xp":100,"explanation":"GC automatically removes unused objects from memory."},
+{"id":42,"difficulty":"medium","title":"Deep Copy","question":"What does a deep copy do?","options":["Copies only references","Copies object and its nested objects","Copies only primitive fields","Does nothing"],"answer":1,"xp":100,"explanation":"Deep copy creates a full independent clone of objects."},
+{"id":43,"difficulty":"medium","title":"Reflection API","question":"What can the Reflection API do?","options":["Access private fields","Create GUIs","Run threads","Compile code"],"answer":0,"xp":100,"explanation":"Reflection allows access to fields and methods at runtime."},
+{"id":44,"difficulty":"medium","title":"JIT Compiler","question":"What does JIT stand for?","options":["Just In Type","Just In Time","Java Internal Tool","Java Integrated Translator"],"answer":1,"xp":100,"explanation":"JIT (Just In Time) compiles bytecode to native code for speed."},
+{"id":45,"difficulty":"medium","title":"Collections Framework","question":"Which interface is the root of the Collections Framework?","options":["List","Map","Collection","Iterable"],"answer":2,"xp":100,"explanation":"Collection is the root interface of the Collections Framework."},
+{"id":46,"difficulty":"medium","title":"Set Characteristics","question":"Which feature defines a Set in Java?","options":["Allows duplicates","Maintains insertion order","Disallows duplicates","Sorted by default"],"answer":2,"xp":100,"explanation":"Set cannot contain duplicate elements."},
+{"id":47,"difficulty":"medium","title":"TreeMap Order","question":"How does TreeMap store its keys?","options":["In insertion order","In random order","In sorted order","In reverse order"],"answer":2,"xp":100,"explanation":"TreeMap stores keys in sorted order by default."},
+{"id":48,"difficulty":"medium","title":"Iterator Remove","question":"Can Iterator remove elements during iteration?","options":["Yes","No","Only for ArrayList","Only for Map"],"answer":0,"xp":100,"explanation":"Iterator’s remove() method safely removes elements while iterating."},
+{"id":49,"difficulty":"medium","title":"Comparable Interface","question":"Which method must be implemented for Comparable?","options":["equals()","compareTo()","hashCode()","compare()"],"answer":1,"xp":100,"explanation":"compareTo() defines natural ordering for objects."},
+{"id":50,"difficulty":"medium","title":"Comparator Interface","question":"Which method is defined in Comparator?","options":["compare()","compareTo()","equals()","sort()"],"answer":0,"xp":100,"explanation":"Comparator defines the compare() method for custom ordering."}
+                ],
+                "hard": [
+                    {"id":1,"difficulty":"hard","title":"ClassLoader Hierarchy","question":"Which class loader loads classes from the JRE/lib directory?","options":["Bootstrap ClassLoader","Extension ClassLoader","System ClassLoader","Custom ClassLoader"],"answer":0,"xp":150,"explanation":"The Bootstrap ClassLoader loads core Java classes from JRE/lib."},
+{"id":2,"difficulty":"hard","title":"Memory Areas","question":"Where are objects stored in JVM memory?","options":["Stack","Heap","Method Area","Register"],"answer":1,"xp":150,"explanation":"All objects and their instance variables are stored in the heap memory."},
+{"id":3,"difficulty":"hard","title":"Metaspace","question":"In Java 8+, where are class metadata stored?","options":["PermGen","Heap","Metaspace","Stack"],"answer":2,"xp":150,"explanation":"Metaspace replaced PermGen for storing class metadata in Java 8."},
+{"id":4,"difficulty":"hard","title":"ConcurrentHashMap Segments","question":"How does ConcurrentHashMap ensure thread safety?","options":["Full synchronization","Segment locking","Copy on write","Immutable structure"],"answer":1,"xp":150,"explanation":"ConcurrentHashMap divides the map into segments with fine-grained locks."},
+{"id":5,"difficulty":"hard","title":"Custom ClassLoader","question":"Which method must be overridden to load a class manually?","options":["findClass()","loadClass()","defineClass()","resolveClass()"],"answer":0,"xp":150,"explanation":"findClass() is overridden when creating custom class loaders."},
+{"id":6,"difficulty":"hard","title":"Deadlock Prevention","question":"Which strategy avoids deadlocks?","options":["Random thread kill","Circular wait prevention","Priority scheduling","Busy waiting"],"answer":1,"xp":150,"explanation":"Prevent circular waiting by acquiring locks in a fixed global order."},
+{"id":7,"difficulty":"hard","title":"Daemon Threads","question":"What happens to daemon threads when all user threads finish?","options":["Continue running","Wait for GC","Terminate automatically","Go to sleep"],"answer":2,"xp":150,"explanation":"Daemon threads automatically terminate when all user threads end."},
+{"id":8,"difficulty":"hard","title":"ForkJoinPool","question":"Which algorithm does ForkJoinPool use for task scheduling?","options":["FIFO","LIFO","Work stealing","Round robin"],"answer":2,"xp":150,"explanation":"ForkJoinPool uses work-stealing to balance load among worker threads."},
+{"id":9,"difficulty":"hard","title":"ReentrantLock","question":"What is the advantage of ReentrantLock over synchronized?","options":["Faster","Supports try-lock and fairness","Uses less memory","Always reentrant"],"answer":1,"xp":150,"explanation":"ReentrantLock provides explicit lock control, tryLock(), and fairness options."},
+{"id":10,"difficulty":"hard","title":"AtomicInteger","question":"Which package contains AtomicInteger?","options":["java.util.concurrent.atomic","java.atomic","java.util.concurrent","java.lang"],"answer":0,"xp":150,"explanation":"AtomicInteger resides in java.util.concurrent.atomic."},
+{"id":11,"difficulty":"hard","title":"ThreadLocal","question":"What does ThreadLocal provide?","options":["Thread synchronization","Thread-safe global data","Thread-confined variables","Locking mechanism"],"answer":2,"xp":150,"explanation":"ThreadLocal gives each thread its own isolated copy of a variable."},
+{"id":12,"difficulty":"hard","title":"SoftReference","question":"When are soft-referenced objects garbage collected?","options":["Immediately","Only when memory is low","Never","After finalize()"],"answer":1,"xp":150,"explanation":"SoftReferences are cleared when JVM runs low on memory."},
+{"id":13,"difficulty":"hard","title":"PhantomReference","question":"What is the use of PhantomReference?","options":["Track unreachable objects","Prevent GC","Clone objects","Weak caching"],"answer":0,"xp":150,"explanation":"PhantomReference lets programs know when objects are ready for collection."},
+{"id":14,"difficulty":"hard","title":"Generics Erasure","question":"What happens to generic type parameters at runtime?","options":["Retained","Erased","Converted to Object","Serialized"],"answer":1,"xp":150,"explanation":"Type erasure removes generic information at runtime for backward compatibility."},
+{"id":15,"difficulty":"hard","title":"Wildcards","question":"What does <? super T> mean in generics?","options":["Subtype bound","Upper bound","Lower bound","Wildcard for all"],"answer":2,"xp":150,"explanation":"? super T accepts T or any of its supertypes — a lower-bounded wildcard."},
+{"id":16,"difficulty":"hard","title":"Annotations Retention","question":"Which retention policy keeps annotations at runtime?","options":["SOURCE","CLASS","RUNTIME","COMPILE"],"answer":2,"xp":150,"explanation":"RUNTIME annotations are available via reflection during execution."},
+{"id":17,"difficulty":"hard","title":"Custom Annotation","question":"Which meta-annotation defines annotation lifetime?","options":["@Documented","@Target","@Retention","@Inherited"],"answer":2,"xp":150,"explanation":"@Retention specifies how long annotations are retained."},
+{"id":18,"difficulty":"hard","title":"Dynamic Proxy","question":"Which package provides dynamic proxies?","options":["java.lang.reflect","java.proxy","java.util.reflect","java.reflection"],"answer":0,"xp":150,"explanation":"Dynamic proxies are built using java.lang.reflect.Proxy and InvocationHandler."},
+{"id":19,"difficulty":"hard","title":"Reflection Performance","question":"Why is reflection slower than direct method calls?","options":["Compiler optimization","Runtime type checks","Caching issues","Memory leaks"],"answer":1,"xp":150,"explanation":"Reflection performs runtime type checks and access validations, reducing speed."},
+{"id":20,"difficulty":"hard","title":"NIO Channels","question":"What do NIO Channels provide?","options":["Blocking I/O","Non-blocking I/O","Stream-based I/O","Synchronous I/O"],"answer":1,"xp":150,"explanation":"Channels in java.nio enable non-blocking I/O operations."},
+{"id":21,"difficulty":"hard","title":"CompletableFuture","question":"What does CompletableFuture improve in concurrency?","options":["Thread count","Async programming","GC performance","File I/O"],"answer":1,"xp":150,"explanation":"CompletableFuture simplifies asynchronous programming and chaining."},
+{"id":22,"difficulty":"hard","title":"ExecutorService Shutdown","question":"What does shutdownNow() do?","options":["Waits for tasks","Cancels pending tasks","Restarts service","Pauses threads"],"answer":1,"xp":150,"explanation":"shutdownNow() attempts to stop all actively executing tasks immediately."},
+{"id":23,"difficulty":"hard","title":"Streams Terminal Operation","question":"Which is a terminal operation in Stream API?","options":["map()","filter()","forEach()","peek()"],"answer":2,"xp":150,"explanation":"forEach() is a terminal operation that triggers stream processing."},
+{"id":24,"difficulty":"hard","title":"Parallel Stream","question":"What is a drawback of parallel streams?","options":["Faster execution","Thread safety issues","Less memory usage","Simpler syntax"],"answer":1,"xp":150,"explanation":"Parallel streams can cause thread safety issues with mutable data."},
+{"id":25,"difficulty":"hard","title":"Method Handles","question":"Which package introduced MethodHandles API?","options":["java.lang.invoke","java.reflect","java.util.concurrent","java.method"],"answer":0,"xp":150,"explanation":"java.lang.invoke provides MethodHandle for faster reflective access."},
+{"id":26,"difficulty":"hard","title":"Sealed Classes","question":"Which Java version introduced sealed classes?","options":["Java 11","Java 14","Java 15","Java 17"],"answer":2,"xp":150,"explanation":"Sealed classes were previewed in Java 15 to restrict subclassing."},
+{"id":27,"difficulty":"hard","title":"Record Keyword","question":"What is the purpose of record classes?","options":["Mutable data","Immutable data carriers","Abstract base classes","Thread management"],"answer":1,"xp":150,"explanation":"Record classes are concise immutable data carriers introduced in Java 14."},
+{"id":28,"difficulty":"hard","title":"Pattern Matching for instanceof","question":"Which Java version added pattern matching for instanceof?","options":["Java 11","Java 14","Java 16","Java 17"],"answer":1,"xp":150,"explanation":"Pattern matching for instanceof was added in Java 14 as a preview."},
+{"id":29,"difficulty":"hard","title":"Text Blocks","question":"What are text blocks used for?","options":["Multiline strings","Byte arrays","Unicode encoding","File streams"],"answer":0,"xp":150,"explanation":"Text blocks (\"\"\" ... \"\"\") provide cleaner multiline string literals."},
+{"id":30,"difficulty":"hard","title":"Var Keyword","question":"What is the scope of the var keyword in Java?","options":["Global","Field-level","Local inference only","Generic type"],"answer":2,"xp":150,"explanation":"var can be used for local variable type inference only."},
+{"id":31,"difficulty":"hard","title":"JVM Just-In-Time","question":"What is the main purpose of the JIT compiler in JVM?","options":["Translate bytecode to native code","Interpret bytecode directly","Compile Java to bytecode","Optimize GC"],"answer":0,"xp":150,"explanation":"The JIT compiler converts bytecode into native machine code at runtime for faster execution."},
+{"id":32,"difficulty":"hard","title":"Memory Leak Cause","question":"Which of the following can cause memory leaks in Java?","options":["Primitive variables","Static references to unused objects","Garbage collector errors","Stack overflow"],"answer":1,"xp":150,"explanation":"Memory leaks occur when objects remain referenced (e.g., via static fields) even after use."},
+{"id":33,"difficulty":"hard","title":"WeakHashMap Behavior","question":"When does a WeakHashMap remove its entries?","options":["When thread ends","When JVM exits","When key becomes weakly reachable","Never automatically"],"answer":2,"xp":150,"explanation":"WeakHashMap removes entries automatically when keys are weakly reachable."},
+{"id":34,"difficulty":"hard","title":"Unsafe Class","question":"Which class provides low-level operations similar to C pointer manipulation?","options":["System","Unsafe","Runtime","MemoryAccess"],"answer":1,"xp":150,"explanation":"sun.misc.Unsafe allows direct memory operations, though it’s discouraged for general use."},
+{"id":35,"difficulty":"hard","title":"Thread Dump","question":"What command is used to take a thread dump of a running Java process?","options":["jmap","jconsole","jstack","javap"],"answer":2,"xp":150,"explanation":"The jstack command prints stack traces of threads in a running Java process."},
+                    {"id":36,"difficulty":"hard","title":"Inheritance","question":"Which keyword is used to make a class inherit from another class?","options":["implements","extends","inherits","super"],"answer":1,"xp":100,"explanation":"The `extends` keyword is used for class inheritance in Java."},
+                    {"id":37,"difficulty":"hard","title":"Exception Handling","question":"Which block of code is used to catch and handle exceptions?","options":["try","catch","finally","throw"],"answer":1,"xp":100,"explanation":"The `catch` block executes when a `try` block throws a matching exception."},
+                    {"id":38,"difficulty":"hard","title":"ArrayList vs Array","question":"What is a key advantage of ArrayList over a standard Array?","options":["Faster access","Fixed size","Stores primitives directly","Dynamic size"],"answer":3,"xp":100,"explanation":"ArrayList can grow and shrink dynamically, unlike arrays which have a fixed size."},
+                    {"id":39,"difficulty":"hard","title":"Polymorphism","question":"The ability of an object to take on many forms is known as...","options":["Encapsulation","Inheritance","Polymorphism","Abstraction"],"answer":2,"xp":100,"explanation":"Polymorphism allows a single action to be performed in different ways."},
+                    {"id":40,"difficulty":"hard","title":"Abstract Class","question":"An `abstract` class...","options":["Cannot have constructors","Can be instantiated","Must have all abstract methods","Cannot be instantiated"],"answer":3,"xp":100,"explanation":"You cannot create a direct object of an abstract class; it must be subclassed."},
+                    {"id":41,"difficulty":"hard","title":"Interface","question":"A Java `interface` can contain...","options":["Instance variables","Constructors","Method implementations","Abstract methods and constants"],"answer":3,"xp":100,"explanation":"Interfaces define a contract with abstract methods and constants (static final variables)."},
+                    {"id":42,"difficulty":"hard","title":"HashMap","question":"Which Collection class stores data in key-value pairs?","options":["ArrayList","LinkedList","HashSet","HashMap"],"answer":3,"xp":100,"explanation":"HashMap is the standard implementation of the Map interface for key-value storage."},
+                    {"id":43,"difficulty":"hard","title":"'finally' Block","question":"In a try-catch structure, the `finally` block will...","options":["Execute only if an exception occurs","Execute only if no exception occurs","Always execute","Execute instead of catch"],"answer":2,"xp":100,"explanation":"The `finally` block always executes, regardless of whether an exception was thrown or caught."},
+                    {"id":44,"difficulty":"hard","title":"Method Overriding","question":"Method overriding is a feature of...","options":["Encapsulation","Polymorphism","Abstraction","Interfaces only"],"answer":1,"xp":100,"explanation":"Method overriding is a classic example of runtime polymorphism in Java."},
+                    {"id":45,"difficulty":"hard","title":"Generics","question":"What is the main purpose of Generics (e.g., `ArrayList<String>`)?","options":["To increase performance","To enforce type safety at compile time","To reduce memory usage","To allow multiple return types"],"answer":1,"xp":100,"explanation":"Generics provide compile-time type checking, preventing `ClassCastException` at runtime."},
+                    {"id":46,"difficulty":"hard","title":"Checked vs Unchecked","question":"Which of the following is a checked exception?","options":["NullPointerException","ArrayIndexOutOfBoundsException","IOException","ArithmeticException"],"answer":2,"xp":100,"explanation":"IOException is a checked exception that the compiler forces you to handle."},
+                    {"id":47,"difficulty":"hard","title":"Equals and HashCode","question":"If you override the `.equals()` method, you should also override...","options":["`.toString()`","`.finalize()`","`.hashCode()`","`.clone()`"],"answer":2,"xp":100,"explanation":"The contract requires that equal objects must have the same hash code."},
+                    {"id":48,"difficulty":"hard","title":"Lambda Expressions","question":"Lambda expressions were introduced in which version of Java?","options":["Java 6","Java 7","Java 8","Java 9"],"answer":2,"xp":100,"explanation":"Lambdas, along with the Stream API, were the major features of Java 8."},
+                    {"id":49,"difficulty":"hard","title":"Garbage Collection","question":"In Java, memory de-allocation is handled by...","options":["The programmer","The `delete` keyword","The Garbage Collector","The Operating System"],"answer":2,"xp":100,"explanation":"Java's automatic garbage collection manages memory for the developer."},
+                    {"id":50,"difficulty":"hard","title":"Singleton Pattern","question":"What is the goal of the Singleton design pattern?","options":["To create multiple objects","To ensure a class has only one instance","To make a class final","To improve thread safety"],"answer":1,"xp":100,"explanation":"The Singleton pattern restricts the instantiation of a class to a single object."}
+                ]
+            };
+            
+            const player = { level: 5, xp: 8950, xpForNextLevel: 12000 };
+            const completedQuests = new Set();
+            let currentDifficulty = null;
+            let currentQuests = [];
+            
+            const difficultySelector = document.getElementById('difficulty-selector');
+            const questSection = document.getElementById('quest-section');
+            const questGrid = document.getElementById('quest-grid');
+            const modal = document.getElementById('question-modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            const synth = new Tone.Synth().toDestination();
+            const sounds = {
+                click: () => synth.triggerAttackRelease("C4", "8n"),
+                success: () => {
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("C5", "8n", now);
+                    synth.triggerAttackRelease("G5", "8n", now + 0.2);
+                },
+                error: () => synth.triggerAttackRelease("C3", "4n"),
+                open: () => synth.triggerAttackRelease("F4", "8n"),
+                difficultySelect: () => synth.triggerAttackRelease("C4", "4n"),
+            };
+
+            const successMessages = [
+                "Mainframe breached!", "Firewall crumbled!", "Encryption key acquired!", "You're in the system!", 
+                "Code injected successfully!", "Quantum lock bypassed!", "Root access granted!", "Data node decrypted!"
+            ];
+
+            const updateHUD = () => {
+                document.getElementById('player-xp').textContent = player.xp;
+                document.getElementById('player-level').textContent = player.level;
+                const xpPercentage = Math.min((player.xp / player.xpForNextLevel) * 100, 100);
+                document.getElementById('xp-bar').style.width = `${xpPercentage}%`;
+            };
+
+            const renderQuestGrid = () => {
+                questGrid.innerHTML = '';
+                if (!currentQuests || currentQuests.length === 0) {
+                    questGrid.innerHTML = '<p class="text-center col-span-full text-2xl text-red-500">MISSION DATA CORRUPTED. UNABLE TO LOAD QUESTS.</p>';
+                    return;
+                }
+                currentQuests.forEach((quest, index) => {
+                    const node = document.createElement('div');
+                    node.className = 'quest-node p-4 text-center';
+                    node.classList.add(quest.difficulty);
+                    const isUnlocked = index === 0 || completedQuests.has(currentQuests[index - 1].id);
+                    if (completedQuests.has(quest.id)) {
+                        node.classList.add('completed');
+                        node.innerHTML = `<span>Node ${quest.id}<br>DECRYPTED</span>`;
+                    } else if (isUnlocked) {
+                        node.classList.add('unlocked');
+                        node.innerHTML = `<span>Node ${quest.id}<br>${quest.title}</span>`;
+                        node.onclick = () => openQuestion(quest);
+                    } else {
+                        node.classList.add('locked');
+                        node.innerHTML = `<span>Node ${quest.id}<br>[LOCKED]</span>`;
+                    }
+                    questGrid.appendChild(node);
+                });
+            };
+
+            const openQuestion = (quest) => {
+                sounds.open();
+                document.getElementById('question-title').textContent = `Decrypting Node ${quest.id}: ${quest.title}`;
+                document.getElementById('question-text').textContent = quest.question;
+                const optionsContainer = document.getElementById('answer-options');
+                optionsContainer.innerHTML = '';
+                quest.options.forEach((option, index) => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.className = 'answer-option p-4 text-left text-lg';
+                    button.onclick = () => submitAnswer(quest, index, button);
+                    optionsContainer.appendChild(button);
+                });
+                const feedbackText = document.getElementById('feedback-text');
+                feedbackText.textContent = '';
+                feedbackText.style.color = 'var(--glow-cyan)';
+                modal.classList.add('active');
+            };
+
+            const submitAnswer = (quest, selectedIndex, button) => {
+                document.querySelectorAll('.answer-option').forEach(btn => btn.disabled = true);
+                const feedbackText = document.getElementById('feedback-text');
+                if (selectedIndex === quest.answer) {
+                    sounds.success();
+                    button.classList.add('correct');
+                    const randomSuccessMsg = successMessages[Math.floor(Math.random() * successMessages.length)];
+                    feedbackText.textContent = randomSuccessMsg;
+                    feedbackText.style.color = 'var(--glow-green)';
+                    player.xp += quest.xp;
+                    completedQuests.add(quest.id);
+                } else {
+                    sounds.error();
+                    button.classList.add('incorrect');
+                    modalContent.parentElement.classList.add('glitch-screen');
+                    feedbackText.textContent = `ANALYSIS: ${quest.explanation}`;
+                    feedbackText.style.color = 'var(--glow-red)';
+                }
+                setTimeout(() => {
+                    modal.classList.remove('active');
+                    modalContent.parentElement.classList.remove('glitch-screen');
+                    updateHUD();
+                    renderQuestGrid();
+                }, 2500);
+            };
+
+            const selectDifficulty = (difficulty) => {
+                sounds.difficultySelect();
+                currentDifficulty = difficulty;
+                difficultySelector.style.animation = 'fade-out 0.5s forwards';
+                
+                setTimeout(() => {
+                    difficultySelector.style.display = 'none';
+                    questSection.classList.add('active');
+                    const titleElement = document.getElementById('quest-grid-title');
+                    const titleText = `SECTOR ${difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3}: ${difficulty.toUpperCase()}`;
+                    titleElement.textContent = `[LOADING MISSIONS FOR ${titleText}...]`;
+                    document.getElementById('header-title').innerHTML = `<a href="index.html" class="font-orbitron text-2xl tracking-widest text-white hover:text-cyan-300">&lt; JavaVerse // ${titleText.replace(': ', '_')}</a>`;
+                    questGrid.innerHTML = '<p class="text-center col-span-full text-2xl text-yellow-400 animate-pulse">DECRYPTING LOCAL DATA... STAND BY...</p>';
+                }, 500);
+
+                setTimeout(() => {
+                    // CHANGE: Load quests directly from the hardcoded object.
+                    currentQuests = ALL_QUESTS[difficulty];
+                    const titleText = `SECTOR ${difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3}: ${difficulty.toUpperCase()}`;
+                    document.getElementById('quest-grid-title').textContent = titleText;
+                    completedQuests.clear();
+                    renderQuestGrid();
+                }, 1200); // Increased delay slightly for effect
+            };
+            
+            document.querySelectorAll('.difficulty-btn').forEach(button => {
+                button.addEventListener('click', (e) => selectDifficulty(e.currentTarget.dataset.difficulty));
+            });
+
+            // Matrix background effect
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const characters = '01'; 
+            const fontSize = 16;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+
+            function drawMatrix() {
+                ctx.fillStyle = 'rgba(12, 10, 24, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'var(--glow-cyan)';
+                ctx.font = `${fontSize}px monospace`;
+                for (let i = 0; i < drops.length; i++) {
+                    const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+
+            setInterval(drawMatrix, 50);
+            updateHUD();
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                 // Re-calculate columns and drops array on resize
+                const newColumns = canvas.width / fontSize;
+                while (drops.length > newColumns) drops.pop();
+                while (drops.length < newColumns) drops.push(1);
+            });
+        });
+    </script>
+</body>
+</html>

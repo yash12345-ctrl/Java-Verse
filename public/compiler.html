@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Java Code Playground</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Fira Code', monospace;
+      background: linear-gradient(135deg, #0a192f, #172a45, #0d1b2a);
+      color: #e0f7fa;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container { max-width: 1200px; width: 90%; margin-top: 2rem; text-align: center; }
+    h1 { font-size: 2.8rem; color: #00e5ff; text-shadow: 0 0 12px rgba(0, 229, 255, 0.8); }
+    .subtitle { font-size: 1rem; color: #b2ebf2; margin-bottom: 1.5rem; }
+
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+    .theme-toggle {
+      background: transparent; border: 1px solid #00e5ff; color: #00e5ff;
+      border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer;
+    }
+
+    .editor-container { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; }
+    .editor, .output { flex: 1; min-width: 45%; background: #0d2538; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+    .panel-header { background: #00394d; padding: 0.8rem 1rem; font-weight: 600; color: #00e5ff; display: flex; justify-content: space-between; }
+
+    #codeEditor, #output {
+      width: 100%; height: 400px; font-family: 'Fira Code', monospace; font-size: 15px; padding: 1rem; border: none; outline: none;
+    }
+    #codeEditor { background: #011627; color: #e0f7fa; }
+    #output { background: #000a12; color: #00ff9d; white-space: pre-wrap; }
+
+    .button-group { display: flex; justify-content: center; gap: 1.2rem; margin-bottom: 1rem; }
+    button { padding: 0.8rem 1.8rem; font-size: 1rem; border: none; border-radius: 8px; cursor: pointer; }
+
+    #runBtn { background: #00e5ff; color: #00394d; }
+    #clearBtn { background: #ff5252; color: white; }
+    #doubtBtn { background: #9c27b0; color: white; }
+
+    .status-bar { margin-top: 0.5rem; color: #b2ebf2; }
+    footer { margin-top: auto; margin-bottom: 1rem; color: #78909c; font-size: 0.85rem; }
+
+    .doubt-box { background: #0d2538; padding: 1rem; border-radius: 10px; margin-top: 1rem; }
+    .doubt-box input {
+      width: 100%; padding: 0.8rem; border-radius: 6px; border: none; outline: none;
+      font-family: 'Fira Code', monospace; background: #011627; color: #e0f7fa;
+    }
+    .doubt-answer { margin-top: 1rem; white-space: pre-wrap; color: #00ff9d; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="toolbar">
+      <h1>Java Code Runner</h1>
+      <button id="themeToggle" class="theme-toggle">🌙 Dark Mode</button>
+    </div>
+    <p class="subtitle">Write, compile, and run Java code instantly. Ask AI your doubts too!</p>
+
+    <div class="editor-container">
+      <div class="editor">
+        <div class="panel-header">Java Code <span>💻 .java</span></div>
+        <textarea id="codeEditor">
+// Write your Java code here
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, Java World!");
+    }
+}</textarea>
+      </div>
+
+      <div class="output">
+        <div class="panel-header">Output <span>🧩 Console</span></div>
+        <textarea id="output" readonly>Type and run Java code to see output here...</textarea>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="runBtn">▶ Run Code</button>
+      <button id="clearBtn">🗑 Clear</button>
+      <button id="doubtBtn">❓ Ask Doubt</button>
+    </div>
+
+    <div class="doubt-box" id="doubtBox" style="display:none;">
+      <input id="doubtInput" placeholder="Enter your Java-related doubt here..." />
+      <div class="doubt-answer" id="doubtAnswer"></div>
+    </div>
+
+    <div class="status-bar" id="status">Ready.</div>
+  </div>
+
+  <footer>© 2025 Java Playground • Powered by JDoodle & Gemini</footer>
+
+  <script>
+    const codeEditor = document.getElementById('codeEditor');
+    const output = document.getElementById('output');
+    const runBtn = document.getElementById('runBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const themeToggle = document.getElementById('themeToggle');
+    const statusBar = document.getElementById('status');
+    const doubtBtn = document.getElementById('doubtBtn');
+    const doubtBox = document.getElementById('doubtBox');
+    const doubtInput = document.getElementById('doubtInput');
+    const doubtAnswer = document.getElementById('doubtAnswer');
+
+    // ---------- Run Java Code ----------
+    runBtn.addEventListener('click', async () => {
+      const code = codeEditor.value.trim();
+      if (!code) return output.value = "⚠ Please write some Java code first.";
+
+      output.value = "🔄 Running your Java code...";
+      statusBar.textContent = "Running...";
+
+      try {
+        const res = await fetch('/run-java', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (data.output) {
+          output.value = data.output;
+          statusBar.textContent = "✅ Success!";
+        } else {
+          output.value = "❌ " + (data.error || "Unknown error");
+          statusBar.textContent = "❌ Failed";
+        }
+      } catch (err) {
+        output.value = "⚠ Network error: " + err.message;
+      }
+    });
+
+    // ---------- Clear ----------
+    clearBtn.addEventListener('click', () => {
+      codeEditor.value = "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, Java World!\");\n    }\n}";
+      output.value = "Cleared. Ready for new code.";
+      statusBar.textContent = "Cleared workspace.";
+    });
+
+    // ---------- Toggle Theme ----------
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('light-mode');
+      themeToggle.textContent = document.body.classList.contains('light-mode')
+        ? "🌙 Dark Mode"
+        : "☀ Light Mode";
+    });
+
+    // ---------- Doubt Box ----------
+    doubtBtn.addEventListener('click', () => {
+      doubtBox.style.display = doubtBox.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // ---------- Ask Gemini ----------
+    doubtInput.addEventListener('keypress', async (e) => {
+      if (e.key === 'Enter') {
+        const question = doubtInput.value.trim();
+        if (!question) return;
+        doubtAnswer.textContent = "🤖 Thinking...";
+        try {
+          const res = await fetch('/ask-gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question })
+          });
+          const data = await res.json();
+          doubtAnswer.textContent = data.answer || "⚠ No response from Gemini.";
+        } catch (err) {
+          doubtAnswer.textContent = "⚠ Error: " + err.message;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

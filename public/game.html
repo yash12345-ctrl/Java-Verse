@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Runner: Cybernetic Circuit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #03001C;
+            --primary-color: #00ADB5; /* Cyan */
+            --secondary-color: #FF2E63; /* Pink/Red */
+            --accent-color: #FFD43B; /* Yellow */
+            --text-color: #E0E0E0;
+            --danger-color: #FF0060;
+            --font-main: 'Orbitron', sans-serif;
+            --font-pixel: 'Press Start 2P', cursive;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        h1 {
+            font-family: var(--font-main);
+            font-size: 3em;
+            color: var(--primary-color);
+            text-shadow: 0 0 15px var(--primary-color), 0 0 30px var(--secondary-color);
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+        }
+
+        .game-wrapper {
+            position: relative;
+        }
+        
+        .game-container {
+            width: 800px; /* Wider canvas */
+            height: 500px; /* Taller canvas */
+            border: 4px solid var(--primary-color);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 173, 181, 0.7), 0 0 60px rgba(255, 46, 99, 0.3);
+            background: #03001C;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+            background: 
+                /* Stars */
+                radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%),
+                linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0.8) 80%),
+                /* Cyber Grid Overlay */
+                repeating-linear-gradient(0deg, transparent, transparent 48.5%, rgba(0,255,255,0.1) 49%, rgba(0,255,255,0.1) 50%, transparent 50.5%, transparent 98.5%, rgba(255,0,255,0.1) 99%, rgba(255,0,255,0.1) 100%),
+                repeating-linear-gradient(90deg, transparent, transparent 48.5%, rgba(0,255,255,0.1) 49%, rgba(0,255,255,0.1) 50%, transparent 50.5%, transparent 98.5%, rgba(255,0,255,0.1) 99%, rgba(255,0,255,0.1) 100%);
+            background-size: 100% 100%, 100% 100%, 80px 80px, 80px 80px;
+            animation: scroll-grid 12s linear infinite;
+        }
+
+        @keyframes scroll-grid {
+            from { background-position: 0 0, 0 0, 0 0, 0 0; }
+            to { background-position: 0 0, 0 0, 0 -160px, 0 0; }
+        }
+
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-pixel);
+            font-size: 0.8em;
+            text-shadow: 0 0 5px var(--text-color);
+        }
+
+        #hud .stat {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0, 173, 181, 0.15);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 173, 181, 0.5);
+            min-width: 120px;
+        }
+
+        #hud .stat strong {
+            margin-right: 8px;
+            color: var(--accent-color);
+            font-size: 1.1em;
+        }
+        
+        #healthBarContainer {
+            width: 150px;
+            height: 18px;
+            background-color: rgba(255, 46, 99, 0.2);
+            border: 1px solid var(--secondary-color);
+            border-radius: 9px;
+            overflow: hidden;
+            box-shadow: 0 0 8px var(--secondary-color);
+            margin-left: 10px;
+        }
+
+        #healthBar {
+            height: 100%;
+            width: 100%; /* controlled by JS */
+            background-color: var(--secondary-color);
+            transition: width 0.2s ease-out;
+            box-shadow: 0 0 5px var(--secondary-color);
+        }
+
+        #hud #score, #hud #highScore {
+            color: var(--accent-color);
+            text-shadow: 0 0 8px var(--accent-color);
+        }
+
+        #hud #combo {
+            color: var(--primary-color);
+            text-shadow: 0 0 8px var(--primary-color);
+            margin-left: 20px;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(3, 0, 28, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-radius: 12px;
+            font-family: var(--font-main);
+            text-shadow: 0 0 5px var(--text-color);
+        }
+
+        .overlay h2 {
+            font-size: 3.5em;
+            margin-bottom: 25px;
+            color: var(--danger-color);
+            text-shadow: 0 0 15px var(--danger-color), 0 0 30px rgba(255,0,96,0.5);
+        }
+        
+        .overlay p { font-size: 1.1em; margin: 10px 0; line-height: 1.6; }
+        .overlay #highScoreValue { color: var(--primary-color); font-size: 1.2em; }
+        .overlay #finalScoreDisplay { font-size: 1.8em; color: var(--accent-color); margin-top: 15px;}
+        
+        .overlay button {
+            padding: 18px 35px;
+            font-size: 1.1em;
+            font-family: var(--font-pixel);
+            color: var(--bg-color);
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+            box-shadow: 0 0 20px var(--primary-color), 0 0 40px rgba(0, 173, 181, 0.4);
+            letter-spacing: 1px;
+        }
+        
+        .overlay button:hover {
+            transform: scale(1.05) translateY(-3px);
+            box-shadow: 0 0 30px var(--primary-color), 0 0 60px rgba(0, 173, 181, 0.6);
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000; /* Above everything else */
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--bg-color);
+            padding: 35px;
+            border: 3px solid var(--secondary-color);
+            border-radius: 15px;
+            width: 90%; max-width: 650px;
+            text-align: center;
+            box-shadow: 0 0 25px var(--secondary-color), 0 0 50px rgba(255, 46, 99, 0.4);
+            font-family: var(--font-main);
+            color: var(--text-color);
+        }
+        
+        #questionText {
+            font-size: 1.6em;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            text-shadow: 0 0 10px var(--primary-color);
+        }
+
+        #optionsContainer button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 12px 0;
+            border: 2px solid var(--primary-color);
+            background-color: rgba(0, 173, 181, 0.1);
+            color: var(--primary-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 1.1em;
+            transition: all 0.2s;
+            box-shadow: 0 0 8px rgba(0, 173, 181, 0.3);
+        }
+
+        #optionsContainer button:hover { 
+            transform: scale(1.01); 
+            background-color: rgba(0, 173, 181, 0.3);
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+        #optionsContainer button.selected { 
+            background-color: var(--primary-color); 
+            color: var(--bg-color); 
+            font-weight: bold;
+            box-shadow: 0 0 20px var(--primary-color);
+        }
+
+        #submitAnswer {
+            margin-top: 30px;
+            padding: 15px 30px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-family: var(--font-pixel);
+            box-shadow: 0 0 15px var(--secondary-color);
+        }
+        #submitAnswer:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px var(--secondary-color);
+        }
+
+        #feedbackText {
+            margin-top: 20px;
+            font-size: 1.1em;
+            min-height: 25px;
+            font-family: var(--font-pixel);
+        }
+
+        /* Screen Shake Keyframes */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        /* Power-up Icon Styling */
+        .powerup-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-pixel);
+            font-size: 0.9em;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+        #shieldIcon {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px var(--primary-color);
+            display: none; /* Hide when not active */
+        }
+        #speedIcon {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px var(--accent-color);
+            display: none; /* Hide when not active */
+            right: 80px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Java Runner: Cybernetic Circuit</h1>
+    <div class="game-wrapper">
+        <div id="gameContainer" class="game-container">
+            <canvas id="gameCanvas" width="800" height="500"></canvas>
+            <div id="hud">
+                <div class="stat">
+                    <strong>HP:</strong>
+                    <div id="healthBarContainer"><div id="healthBar"></div></div>
+                </div>
+                <div class="stat">
+                    <strong id="score">Score: 0</strong>
+                </div>
+                <div class="stat">
+                    <strong id="highScore">High Score: 0</strong>
+                </div>
+                <div class="stat">
+                    <strong id="combo">Combo: x1</strong>
+                </div>
+            </div>
+            <div id="shieldIcon" class="powerup-icon">S</div>
+            <div id="speedIcon" class="powerup-icon">⚡</div>
+        </div>
+        
+        <div id="startScreen" class="overlay">
+            <h2>System Online</h2>
+            <p>Navigate the Cybernetic Circuit.</p>
+            <p>Dodge obstacles, answer Java questions, and collect power-ups.</p>
+            <p><strong>Controls:</strong></p>
+            <p><strong>A/D</strong> or <strong>←/→</strong> to Move</p>
+            <p><strong>W / Space / ↑</strong> to Jump</p>
+            <p>High Score: <span id="highScoreValue">0</span></p>
+            <button id="startButton">Engage</button>
+        </div>
+        
+        <div id="gameOverScreen" class="overlay" style="display: none;">
+            <h2>Circuit Malfunction</h2>
+            <p>Final Score: <span id="finalScoreDisplay">0</span></p>
+            <button id="restartButton">Retry</button>
+        </div>
+    </div>
+
+    <div id="questionModal" class="modal">
+        <div class="modal-content">
+            <h2 id="questionText"></h2>
+            <div id="optionsContainer"></div>
+            <button id="submitAnswer">Submit</button>
+            <p id="feedbackText"></p>
+        </div>
+    </div>
+
+   <script>
+        // --- Canvas & UI Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('gameContainer');
+        const scoreEl = document.getElementById('score');
+        const highScoreEl = document.getElementById('highScore');
+        const comboEl = document.getElementById('combo');
+        const healthBar = document.getElementById('healthBar');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const finalScoreDisplay = document.getElementById('finalScoreDisplay');
+        const highScoreValueEl = document.getElementById('highScoreValue');
+        const shieldIcon = document.getElementById('shieldIcon');
+        const speedIcon = document.getElementById('speedIcon');
+        
+        // --- Modal Elements ---
+        const questionModal = document.getElementById('questionModal');
+        const questionText = document.getElementById('questionText');
+        const optionsContainer = document.getElementById('optionsContainer');
+        const submitAnswerBtn = document.getElementById('submitAnswer');
+        const feedbackText = document.getElementById('feedbackText');
+        
+        // --- Game State ---
+        let score = 0;
+        let highScore = localStorage.getItem('javaRunnerHighScore_v3') || 0;
+        let gameSpeed = 5; // Initial speed
+        let gameState = 'START'; // START, PLAYING, PAUSED, GAMEOVER
+        let currentQuestion = null;
+        let selectedAnswer = null;
+        let combo = 1;
+        let playerHealth = 100;
+        const MAX_HEALTH = 100;
+
+        // Power-up states
+        let hasShield = false;
+        let speedBoostActive = false;
+        let speedBoostTimer = 0;
+        const SPEED_BOOST_DURATION = 5 * 60; // 5 seconds at 60fps
+
+        // Lane positions
+        const lanes = [canvas.width * 0.2, canvas.width * 0.5, canvas.width * 0.8];
+        const groundY = canvas.height - 70; // Higher ground for better jump visibility
+        let player, items, particles, playerTrail;
+        let lastItemCreationTime = 0;
+        const BASE_ITEM_INTERVAL = 1500; // ms
+
+        // --- Sound Effects (UPDATE THESE PATHS) ---
+        const sounds = {
+            jump: new Audio('sounds/jump.wav'),
+            coin: new Audio('sounds/coin.wav'),
+            damage: new Audio('sounds/damage.wav'),
+            powerup: new Audio('sounds/powerup.wav'),
+            gameover: new Audio('sounds/gameover.wav'),
+            correct: new Audio('sounds/correct.wav'), // Example: For correct answer
+            wrong: new Audio('sounds/wrong.wav')     // Example: For wrong answer
+        };
+        // Optional: Set volume for all sounds
+        for (let s in sounds) {
+            sounds[s].volume = 0.5;
+        }
+
+        // --- Player Object ---
+        function createPlayer() {
+            return {
+                width: 40, height: 40, lane: 1, x: lanes[1], y: groundY,
+                isJumping: false, velocityY: 0, gravity: 0.7, jumpPower: -18,
+                targetX: lanes[1], color: '#00ADB5',
+                draw() {
+                    // Body
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x - this.width / 2, this.y, this.width, this.height);
+                    ctx.shadowBlur = 0;
+
+                    // Shield effect
+                    if (hasShield) {
+                        ctx.strokeStyle = '#00ADB5';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y + this.height / 2, this.width * 0.8, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.shadowColor = '#00ADB5';
+                        ctx.shadowBlur = 10;
+                    }
+                },
+                update() {
+                    this.x += (this.targetX - this.x) * 0.3; // Smoother lane change
+                    if (this.isJumping) {
+                        this.velocityY += this.gravity;
+                        this.y += this.velocityY;
+                        if (this.y >= groundY) {
+                            this.y = groundY; this.isJumping = false;
+                            this.velocityY = 0;
+                        }
+                    }
+                },
+                move(dir) {
+                    if (dir === 'left' && this.lane > 0) this.lane--;
+                    else if (dir === 'right' && this.lane < 2) this.lane++;
+                    this.targetX = lanes[this.lane];
+                },
+                jump() { if (!this.isJumping) { sounds.jump.play(); this.isJumping = true; this.velocityY = this.jumpPower; } }
+            };
+        }
+
+        // --- Items (Obstacles & Power-ups) ---
+        const itemTypes = { 
+            QUESTION: 'QUESTION', 
+            SPIKE: 'SPIKE', 
+            COIN: 'COIN',
+            HEALTH_PACK: 'HEALTH_PACK',
+            SPEED_BOOST: 'SPEED_BOOST',
+            SHIELD: 'SHIELD',
+            MOVING_BARRIER: 'MOVING_BARRIER',
+            GAP: 'GAP'
+        };
+
+        function createItem() {
+            const laneIndex = Math.floor(Math.random() * 3);
+            const typeRoll = Math.random();
+            let item = { x: lanes[laneIndex], y: -50, initialLane: laneIndex };
+
+            if (typeRoll < 0.45) { // Question blocks (high chance)
+                item.type = itemTypes.QUESTION; item.width = 60; item.height = 30; item.color = '#FF2E63';
+            } else if (typeRoll < 0.7) { // Spikes
+                item.type = itemTypes.SPIKE; item.width = 40; item.height = 20; item.y = groundY; item.color = '#E0E0E0';
+            } else if (typeRoll < 0.8) { // Coins
+                item.type = itemTypes.COIN; item.radius = 15; item.color = '#FFD43B';
+            } else if (typeRoll < 0.88) { // Power-ups
+                const powerUpRoll = Math.random();
+                if (powerUpRoll < 0.33) {
+                    item.type = itemTypes.HEALTH_PACK; item.radius = 18; item.color = '#2ecc71';
+                } else if (powerUpRoll < 0.66) {
+                    item.type = itemTypes.SPEED_BOOST; item.radius = 18; item.color = '#ffcc00';
+                } else {
+                    item.type = itemTypes.SHIELD; item.radius = 18; item.color = '#00ADB5';
+                }
+            } else if (typeRoll < 0.95 && gameSpeed > 7) { // Moving barriers (higher speed)
+                item.type = itemTypes.MOVING_BARRIER; item.width = 70; item.height = 30; item.color = '#FF2E63';
+                item.targetLane = Math.floor(Math.random() * 3);
+                item.movementSpeed = (Math.random() * 0.5 + 0.5) * gameSpeed * 0.5; // Moves horizontally
+            } else { // Gap Jumps (only on ground)
+                item.type = itemTypes.GAP; item.width = 100; item.height = 10; item.y = groundY + 5; item.color = 'rgba(0,0,0,0.5)';
+            }
+            items.push(item);
+        }
+
+        function handleItems() {
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                
+                if (item.type === itemTypes.MOVING_BARRIER) {
+                    item.y += gameSpeed;
+                    // Move horizontally towards target lane
+                    item.x += (lanes[item.targetLane] - item.x) * (item.movementSpeed / (canvas.width * 0.1));
+                } else {
+                    item.y += gameSpeed;
+                }
+                
+                // Draw item
+                ctx.fillStyle = item.color;
+                ctx.shadowColor = item.color;
+                ctx.shadowBlur = 10;
+
+                if (item.type === itemTypes.COIN || item.type === itemTypes.HEALTH_PACK || 
+                    item.type === itemTypes.SPEED_BOOST || item.type === itemTypes.SHIELD) {
+                    ctx.beginPath(); ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2); ctx.fill();
+                    // Add specific icons for power-ups
+                    ctx.fillStyle = '#E0E0E0';
+                    ctx.font = '16px "Press Start 2P"';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    if (item.type === itemTypes.HEALTH_PACK) ctx.fillText('+', item.x, item.y + 2);
+                    else if (item.type === itemTypes.SPEED_BOOST) ctx.fillText('⚡', item.x, item.y + 2);
+                    else if (item.type === itemTypes.SHIELD) ctx.fillText('S', item.x, item.y + 2);
+                    else if (item.type === itemTypes.COIN) ctx.fillText('$', item.x, item.y + 2);
+
+                } else if (item.type === itemTypes.SPIKE) {
+                    ctx.beginPath();
+                    ctx.moveTo(item.x - item.width / 2, item.y);
+                    ctx.lineTo(item.x, item.y - item.height);
+                    ctx.lineTo(item.x + item.width / 2, item.y);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (item.type === itemTypes.QUESTION) {
+                    ctx.fillRect(item.x - item.width / 2, item.y, item.width, item.height);
+                    ctx.fillStyle = '#03001C';
+                    ctx.font = '24px "Press Start 2P"';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('?', item.x, item.y + item.height / 2 + 2);
+                } else if (item.type === itemTypes.GAP) {
+                    // Draw a visual gap in the ground
+                    ctx.fillStyle = item.color; // Darker ground color
+                    ctx.fillRect(item.x - item.width / 2, groundY, item.width, canvas.height - groundY);
+                }
+                ctx.shadowBlur = 0;
+
+                // Collision Detection
+                let collided = false;
+                const playerLeft = player.x - player.width / 2;
+                const playerRight = player.x + player.width / 2;
+                const playerTop = player.y;
+                const playerBottom = player.y + player.height;
+
+                const itemLeft = item.x - (item.width || item.radius) / 2;
+                const itemRight = item.x + (item.width || item.radius) / 2;
+                const itemTop = (item.type === itemTypes.SPIKE) ? item.y - item.height : item.y;
+                const itemBottom = (item.type === itemTypes.SPIKE) ? item.y : item.y + (item.height || item.radius);
+                
+                // Basic AABB collision check
+                const isCollidingX = playerRight > itemLeft && playerLeft < itemRight;
+                const isCollidingY = playerBottom > itemTop && playerTop < itemBottom;
+                
+                if (isCollidingX && isCollidingY) {
+                    if (item.type === itemTypes.GAP) {
+                        if (!player.isJumping) {
+                            takeDamage(50);
+                            screenShake();
+                            collided = true;
+                        }
+                    } else if (item.type === itemTypes.SPIKE) {
+                        if (!player.isJumping) {
+                            takeDamage(25);
+                            screenShake();
+                            collided = true;
+                        }
+                    } else if (item.type === itemTypes.QUESTION) {
+                        gameState = 'PAUSED';
+                        showQuestion();
+                        collided = true;
+                    } else if (item.type === itemTypes.MOVING_BARRIER) {
+                        if (!player.isJumping) {
+                            takeDamage(15);
+                            screenShake();
+                            collided = true;
+                        }
+                    } else { // Power-ups and coins
+                        handleCollision(item);
+                        collided = true;
+                    }
+                }
+
+                if (collided) {
+                    items.splice(i, 1);
+                    continue;
+                }
+
+                if (item.y > canvas.height + 50) {
+                    items.splice(i, 1);
+                }
+            }
+        }
+        
+        function handleCollision(item) {
+            switch(item.type) {
+                case itemTypes.COIN: updateScore(10 * combo); createParticles(item.x, item.y, item.color); sounds.coin.play(); combo++; break;
+                case itemTypes.HEALTH_PACK: playerHealth = Math.min(MAX_HEALTH, playerHealth + 30); healthBar.style.width = `${playerHealth}%`; sounds.powerup.play(); break;
+                case itemTypes.SPEED_BOOST: activateSpeedBoost(); sounds.powerup.play(); break;
+                case itemTypes.SHIELD: activateShield(); sounds.powerup.play(); break;
+            }
+        }
+
+        // --- Particles ---
+        function createParticles(x, y, color, count = 20) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 1) * 5,
+                    size: Math.random() * 4 + 1,
+                    life: 60, // frames
+                    color: color
+                });
+            }
+        }
+
+        function handleParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life--;
+                p.vy += 0.1; // Gravity for particles
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+                
+                ctx.globalAlpha = p.life / 60;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // --- Player Trail ---
+        function handlePlayerTrail() {
+            playerTrail.push({ x: player.x, y: player.y + player.height / 2, size: player.width * 0.8, alpha: 1.0 });
+            
+            for (let i = playerTrail.length -1; i >= 0; i--) {
+                const p = playerTrail[i];
+                p.alpha -= 0.05;
+                p.size *= 0.95;
+                if (p.alpha <= 0.1 || p.size < 5) {
+                    playerTrail.splice(i, 1);
+                    continue;
+                }
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = player.color;
+                ctx.fillRect(p.x - p.size / 2, p.y - p.size/2, p.size, p.size);
+            }
+            ctx.globalAlpha = 1.0;
+        }
+
+        // --- Power-up Logic ---
+        function activateShield() {
+            hasShield = true;
+            shieldIcon.style.display = 'flex';
+            setTimeout(() => {
+                hasShield = false;
+                shieldIcon.style.display = 'none';
+            }, 8000); // Shield lasts 8 seconds
+        }
+
+        function activateSpeedBoost() {
+            if (speedBoostActive) {
+                speedBoostTimer = SPEED_BOOST_DURATION; // Reset timer if already active
+            } else {
+                speedBoostActive = true;
+                speedIcon.style.display = 'flex';
+                gameSpeed *= 1.5; // Temporarily increase game speed
+                speedBoostTimer = SPEED_BOOST_DURATION;
+            }
+        }
+
+        function updateSpeedBoost() {
+            if (speedBoostActive) {
+                speedBoostTimer--;
+                if (speedBoostTimer <= 0) {
+                    speedBoostActive = false;
+                    speedIcon.style.display = 'none';
+                    gameSpeed /= 1.5; // Revert speed
+                }
+            }
+        }
+
+        // --- Health & Damage ---
+        function takeDamage(amount) {
+            if (hasShield) {
+                hasShield = false; // Shield absorbs one hit
+                shieldIcon.style.display = 'none';
+                combo = 1; // Damage resets combo
+                sounds.powerup.play(); // Shield break sound
+                createParticles(player.x, player.y, '#00ADB5', 30); // Shield break particles
+                return;
+            }
+            playerHealth -= amount;
+            healthBar.style.width = `${playerHealth}%`;
+            createParticles(player.x, player.y, '#FF2E63', 25);
+            sounds.damage.play();
+            combo = 1; // Damage resets combo
+
+            if (playerHealth <= 0) {
+                playerHealth = 0;
+                gameState = 'GAMEOVER';
+            }
+        }
+
+        // --- Java Questions ---
+        const javaQuestions = [
+            { q: "Which keyword is used to define a constant in Java?", o: ["final", "const", "static", "let"], a: "final" },
+            { q: "What is the entry point of a Java program?", o: ["main()", "start()", "run()", "init()"], a: "main()" },
+            { q: "Which data type is used to create a variable that should store text?", o: ["String", "string", "Txt", "MyString"], a: "String" },
+            { q: "How do you create an object of a class called 'MyClass'?", o: ["MyClass obj = new MyClass();", "class obj = new MyClass();", "new obj = MyClass();", "MyClass obj = MyClass();"], a: "MyClass obj = new MyClass();" },
+            { q: "Which of these is the correct way to declare a multi-line comment in Java?", o: ["/* This is a comment */", "// This is a comment", "", "# This is a comment"], a: "/* This is a comment */" },
+            { q: "What does 'JVM' stand for in Java?", o: ["Java Virtual Machine", "Java Verification Module", "Joint Virtual Module", "Just Very Merry"], a: "Java Virtual Machine" },
+            { q: "Which statement is used to exit from a loop in Java?", o: ["break", "continue", "return", "exit"], a: "break" },
+            { q: "Which keyword prevents a method from being overridden?", o: ["final", "static", "abstract", "private"], a: "final" },
+            { q: "What is the base class for all classes in Java?", o: ["Object", "Class", "Root", "Parent"], a: "Object" }
+        ];
+
+        function showQuestion() {
+            currentQuestion = javaQuestions[Math.floor(Math.random() * javaQuestions.length)];
+            questionText.textContent = currentQuestion.q;
+            optionsContainer.innerHTML = '';
+            selectedAnswer = null;
+            feedbackText.textContent = ''; // Clear previous feedback
+
+            currentQuestion.o.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.onclick = () => {
+                    Array.from(optionsContainer.children).forEach(btn => btn.classList.remove('selected'));
+                    button.classList.add('selected');
+                    selectedAnswer = option;
+                };
+                optionsContainer.appendChild(button);
+            });
+            questionModal.style.display = 'flex';
+        }
+
+        submitAnswerBtn.onclick = () => {
+            if (!selectedAnswer) {
+                feedbackText.textContent = "Please select an answer!";
+                feedbackText.style.color = '#FFD43B';
+                return;
+            }
+
+            if (selectedAnswer === currentQuestion.a) {
+                feedbackText.textContent = "Correct! Circuit clear.";
+                feedbackText.style.color = '#2ecc71';
+                sounds.correct.play();
+                updateScore(50 * combo); // Higher bonus for correct answer
+                combo++;
+                setTimeout(() => {
+                    questionModal.style.display = 'none';
+                    gameState = 'PLAYING';
+                    requestAnimationFrame(gameLoop);
+                }, 1000);
+            } else {
+                feedbackText.textContent = `Wrong! Correct: ${currentQuestion.a}`;
+                feedbackText.style.color = '#FF0060';
+                sounds.wrong.play();
+                takeDamage(30); // Take damage for wrong answer
+                combo = 1; // Wrong answer resets combo
+                setTimeout(() => {
+                    questionModal.style.display = 'none';
+                    if (gameState !== 'GAMEOVER') { // Only resume if game is not over from damage
+                        gameState = 'PLAYING';
+                        requestAnimationFrame(gameLoop);
+                    }
+                }, 1500);
+            }
+        };
+        
+        // --- Game Logic ---
+        function updateScore(points) {
+            score += points;
+            scoreEl.textContent = `Score: ${score}`;
+            if (score > highScore) {
+                highScore = score;
+                highScoreEl.textContent = `High Score: ${highScore}`;
+                localStorage.setItem('javaRunnerHighScore_v3', highScore);
+            }
+            comboEl.textContent = `Combo: x${combo}`;
+        }
+
+        function screenShake() {
+            gameContainer.style.animation = 'shake 0.3s';
+            setTimeout(() => gameContainer.style.animation = '', 300);
+        }
+
+        function resetGame() {
+            score = 0;
+            gameSpeed = 5;
+            playerHealth = MAX_HEALTH;
+            healthBar.style.width = '100%';
+            combo = 1;
+            hasShield = false;
+            speedBoostActive = false;
+            speedBoostTimer = 0;
+            shieldIcon.style.display = 'none';
+            speedIcon.style.display = 'none';
+            
+            items = [];
+            particles = [];
+            playerTrail = [];
+            player = createPlayer();
+            updateScore(0); // This also updates combo display
+        }
+        
+        // --- Event Listeners ---
+        startButton.onclick = () => {
+            startScreen.style.display = 'none';
+            gameState = 'PLAYING';
+            resetGame();
+            lastItemCreationTime = performance.now(); // Start timing obstacles
+            gameLoop();
+        };
+        
+        restartButton.onclick = () => {
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'flex'; // Go back to start screen
+            highScoreValueEl.textContent = highScore;
+        };
+        
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING') return;
+            const key = e.key.toLowerCase();
+            if (key === 'a' || key === 'arrowleft') player.move('left');
+            else if (key === 'd' || key === 'arrowright') player.move('right');
+            else if (key === 'w' || key === 'arrowup' || key === ' ') player.jump();
+        });
+        
+        // --- Game Loop ---
+        let animationFrameId;
+        function gameLoop(currentTime) {
+            if (gameState === 'GAMEOVER') {
+                finalScoreDisplay.textContent = score;
+                gameOverScreen.style.display = 'flex';
+                sounds.gameover.play();
+                cancelAnimationFrame(animationFrameId);
+                return;
+            }
+            if (gameState !== 'PLAYING') {
+                cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Ground/Road lines
+            ctx.strokeStyle = '#00ADB5';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([20, 30]);
+            ctx.shadowColor = '#00ADB5';
+            ctx.shadowBlur = 10;
+            for(let i=0; i<3; i++){
+                ctx.beginPath();
+                ctx.moveTo(lanes[i], 0);
+                ctx.lineTo(lanes[i], canvas.height);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]); // Reset line dash
+            ctx.shadowBlur = 0; // Reset shadow
+
+            handlePlayerTrail();
+            player.update();
+            player.draw();
+            handleItems();
+            handleParticles();
+            updateSpeedBoost();
+
+            // Dynamic item creation based on time and speed
+            const minInterval = BASE_ITEM_INTERVAL / (1 + gameSpeed / 10);
+            if (currentTime - lastItemCreationTime > minInterval) {
+                createItem();
+                lastItemCreationTime = currentTime;
+            }
+            
+            gameSpeed += 0.0005; // Gradually increase base speed
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Initialization ---
+        function init() {
+            highScoreEl.textContent = `High Score: ${highScore}`;
+            highScoreValueEl.textContent = highScore;
+        }
+        init();
+    </script>
+</body>
+</html>

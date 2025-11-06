@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaVerse - Project Forge</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --glow-purple: #8a2be2;
+            --glow-orange: #ff8c00;
+            --background-dark: #0c0a18;
+            --card-dark: rgba(23, 19, 44, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-dark);
+            color: #e0e0e0;
+            overflow-x: hidden;
+            cursor: crosshair;
+        }
+        
+        /* Screen Effects (Scanlines & Vignette) */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            z-index: 9999;
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.5); /* Vignette */
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+
+        /* Animations */
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .animate-fade-in-up {
+            opacity: 0;
+            animation: fade-in-up 0.6s forwards cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* Form Styles */
+        .prompt-textarea {
+            background-color: var(--card-dark);
+            border: 1px solid rgba(138, 43, 226, 0.4);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease-out;
+            font-family: 'Roboto Mono', monospace;
+        }
+        .prompt-textarea:focus {
+            background-color: rgba(23, 19, 44, 0.9);
+            border-color: var(--glow-orange);
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
+            outline: none;
+        }
+
+        /* Button Styles */
+        .generate-button {
+            background: linear-gradient(90deg, var(--glow-purple), var(--glow-orange));
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s ease-out;
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
+        }
+        .generate-button:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 30px rgba(255, 140, 0, 0.6);
+        }
+        .generate-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(1);
+            box-shadow: none;
+        }
+        
+        /* Loader */
+        .loader {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--glow-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Code Output */
+        .code-container {
+            background-color: #010409;
+            border: 1px solid rgba(138, 43, 226, 0.4);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+        #code-output {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Syntax Highlighting */
+        .code-comment { color: #8b949e; }
+        .code-string { color: #a5d6ff; }
+        .code-keyword { color: #ff7b72; }
+        .code-class { color: #ffa657; }
+        .code-method { color: #d2a8ff; }
+        .code-number { color: #79c0ff; }
+        .code-annotation { color: #ffab70; }
+        
+        /* Copy Button */
+        .copy-button {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.5;
+            z-index: 5; /* Ensure it's above the image view */
+        }
+        .code-container:hover .copy-button {
+            opacity: 1;
+        }
+        .copy-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        #copied-message {
+            position: absolute;
+            top: 12px;
+            right: 100px;
+            background-color: #2a9d8f;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 5; /* Ensure it's above the image view */
+        }
+        #copied-message.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <canvas id="particle-canvas" class="fixed top-0 left-0 w-full h-full z-0"></canvas>
+
+    <div class="relative z-10 min-h-screen flex flex-col">
+        <header class="p-6 flex justify-between items-center z-20">
+            <a href="index.html" class="text-3xl font-bold font-orbitron tracking-widest text-white transition-all duration-300 hover:text-orange-400" style="text-shadow: 0 0 10px var(--glow-purple);">JavaVerse</a>
+            <a href="index.html" class="text-gray-300 hover:text-orange-400 transition-colors duration-300 text-lg font-roboto-mono">&lt; Back to Nexus</a>
+        </header>
+
+        <main class="flex-grow container mx-auto px-6 py-12">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl md:text-5xl font-bold font-orbitron uppercase text-white animate-fade-in-up" style="animation-delay: 0.1s;">Project Forge</h1>
+                <p class="text-xl text-gray-400 mt-2 mb-10 animate-fade-in-up" style="animation-delay: 0.2s;">Describe the Java project you want to build. The AI will forge the code.</p>
+
+                <div class="mb-8 animate-fade-in-up" style="animation-delay: 0.3s;">
+                    <label for="project-prompt" class="block text-lg font-roboto-mono text-orange-400 mb-2">Project Prompt</label>
+                    <textarea id="project-prompt" rows="5" class="prompt-textarea w-full p-4 rounded-lg text-gray-200" placeholder="e.g., 'Build a simple Java console-based calculator that can add, subtract, multiply, and divide.'"></textarea>
+                </div>
+
+                <div class="text-center mb-12 animate-fade-in-up" style="animation-delay: 0.4s;">
+                    <button id="generate-button" class="generate-button text-white font-bold py-3 px-8 rounded-lg text-lg uppercase tracking-wider flex items-center justify-center mx-auto">
+                        <span id="button-text">Forge Project</span>
+                        <div id="loader" class="loader ml-3 hidden"></div>
+                    </button>
+                </div>
+
+                <div id="result-container" class="code-container rounded-lg overflow-hidden animate-fade-in-up hidden" style="animation-delay: 0.5s;">
+                    
+                    <div id="image-view" class="border-b border-[rgba(138,43,226,0.4)] hidden">
+                        <h3 class="text-lg font-roboto-mono text-orange-400 p-4 pb-2">Project Visual Concept</h3>
+                        <img id="project-image" src="" alt="Project visualization" class="w-full h-auto object-cover hidden">
+                    </div>
+
+                    <button id="copy-button" class="copy-button">Copy Code</button>
+                    <span id="copied-message">Copied!</span>
+                    <pre class="p-6 overflow-x-auto"><code id="code-output"></code></pre>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center p-6 mt-12"><p class="text-gray-500">&copy; 2025 JavaVerse. All Rights Reserved.</p></footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Particle Background ---
+            // (Reusing the same particle animation from the main page for consistency)
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let particles = [];
+            const symbols = ['{}', ';', '()', '[]', '=>', 'class', 'public', 'static', 'void'];
+            class Particle {
+                constructor() { this.reset(); }
+                reset() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * -50;
+                    this.size = Math.random() * 12 + 8;
+                    this.speedY = Math.random() * 1.0 + 0.5;
+                    this.symbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    this.opacity = Math.random() * 0.3 + 0.1;
+                    this.color = `rgba(138, 43, 226, ${this.opacity})`;
+                }
+                update() { 
+                    this.y += this.speedY; 
+                    if (this.y > canvas.height + 50) this.reset(); 
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.font = `${this.size}px 'Roboto Mono'`;
+                    ctx.globalAlpha = this.opacity;
+                    ctx.fillText(this.symbol, this.x, this.y);
+                }
+            }
+            function initParticles() { for (let i = 0; i < 80; i++) particles.push(new Particle()); }
+            function connectParticles() {
+                let opacityValue = 1;
+                for (let a = 0; a < particles.length; a++) {
+                    for (let b = a; b < particles.length; b++) {
+                        let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
+                                     + ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
+                        if (distance < (canvas.width / 7) * (canvas.height / 7)) {
+                            opacityValue = 1 - (distance/20000);
+                            ctx.strokeStyle = `rgba(255, 140, 0, ${opacityValue * 0.3})`;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[a].x, particles[a].y);
+                            ctx.lineTo(particles[b].x, particles[b].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+            function animateParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => { p.update(); p.draw(); });
+                connectParticles();
+                requestAnimationFrame(animateParticles);
+            }
+            initParticles();
+            animateParticles();
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                particles = [];
+                initParticles();
+            });
+
+
+            // --- Gemini API Logic ---
+            const promptTextarea = document.getElementById('project-prompt');
+            const generateButton = document.getElementById('generate-button');
+            const buttonText = document.getElementById('button-text');
+            const loader = document.getElementById('loader');
+            const resultContainer = document.getElementById('result-container');
+            const codeOutput = document.getElementById('code-output');
+            const copyButton = document.getElementById('copy-button');
+            const copiedMessage = document.getElementById('copied-message');
+
+            // --- Image View Elements ---
+            const imageView = document.getElementById('image-view');
+            const projectImage = document.getElementById('project-image');
+
+            // -----------------------------------------------------------------
+            // --- PASTE YOUR API KEY HERE ---
+            // -----------------------------------------------------------------
+            const apiKey = "AIzaSyAQS0-6-UG5a6_CsUon164aBrXXec299hM"; // <-- THIS IS THE LINE
+            // -----------------------------------------------------------------
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            // System instruction to guide the model
+            const systemPrompt = `You are an expert Java developer. Your task is to generate a complete, single-file Java project based on the user's prompt.
+- The code must be fully runnable.
+- Include all necessary imports.
+- If it's a console application, it must include a 'public static void main(String[] args)' method.
+- If it's a GUI application, use Swing or JavaFX and ensure it can be compiled and run from a single file.
+- Provide clear, detailed comments throughout the code to explain the logic.
+- Do NOT include any text, explanation, or markdown formatting (like \`\`\`java) outside of the raw Java code itself.
+- Only provide the Java code.`;
+
+            generateButton.addEventListener('click', handleGenerateClick);
+            copyButton.addEventListener('click', handleCopyClick);
+
+            /**
+             * Handles the generate button click event.
+             */
+            async function handleGenerateClick() {
+                const userQuery = promptTextarea.value;
+                if (!userQuery) {
+                    codeOutput.innerHTML = `<span class="code-comment">// Please enter a project description.</span>`;
+                    resultContainer.classList.remove('hidden');
+                    imageView.classList.add('hidden'); // Hide image view
+                    return;
+                }
+                
+                // --- API Key Check ---
+                if (apiKey === "PASTE_YOUR_API_KEY_HERE" || apiKey === "") {
+                    codeOutput.innerHTML = `<span class="code-comment">// Error: API key not set.\n// Please open project.html and add your Google API key to the 'apiKey' variable in the &lt;script&gt; tag.</span>`;
+                    resultContainer.classList.remove('hidden');
+                    imageView.classList.add('hidden'); // Hide image view
+                    return;
+                }
+
+                setLoading(true);
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+
+                try {
+                    const result = await fetchWithBackoff(apiUrl, payload);
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (text) {
+                        // 1. Highlight and display code
+                        const highlightedCode = simpleJavaSyntaxHighlight(text);
+                        codeOutput.innerHTML = highlightedCode;
+                        
+                        // 2. Generate and display image
+                        const keywords = userQuery.split(' ').slice(0, 4).join(',');
+                        
+                        // --- UPDATED IMAGE LOGIC ---
+                        // Add event listener to show image only when loaded
+                        projectImage.onload = () => {
+                            projectImage.classList.remove('hidden');
+                            imageView.classList.remove('hidden');
+                        };
+                        // Add error handler in case image fails to load
+                        projectImage.onerror = () => {
+                            // Don't show the broken image container
+                            imageView.classList.add('hidden'); 
+                            projectImage.classList.add('hidden');
+                        };
+                        
+                        projectImage.src = `https://source.unsplash.com/800x400/?java,code,${encodeURIComponent(keywords)}`;
+                        // --- END OF UPDATE ---
+
+                        // 3. Show the main result container
+                        resultContainer.classList.remove('hidden');
+
+                    } else {
+                        // Check for specific error message if content is missing
+                        let errorMessage = 'No content returned from API.';
+                        if (result.candidates && result.candidates[0].finishReason) {
+                            errorMessage = `Generation failed: ${result.candidates[0].finishReason}`;
+                        } else if (result.promptFeedback) {
+                            errorMessage = `Generation blocked. Reason: ${result.promptFeedback.blockReason}`;
+                        }
+                        throw new Error(errorMessage);
+                    }
+                } catch (error) {
+                    codeOutput.innerHTML = `<span class="code-comment">// Error generating project. Please check the console and try again.\n// ${error.message}</span>`;
+                    imageView.classList.add('hidden'); // Hide image view on error
+                    resultContainer.classList.remove('hidden');
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            /**
+             * Implements exponential backoff for API retries.
+             */
+            async function fetchWithBackoff(url, payload, retries = 3, delay = 1000) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 && retries > 0) {
+                            // Throttled, wait and retry
+                            await new Promise(res => setTimeout(res, delay));
+                            return fetchWithBackoff(url, payload, retries - 1, delay * 2);
+                        }
+                        // Try to parse error response for more details
+                        let errorBody = await response.text();
+                        let errorDetails = errorBody;
+                        try {
+                           errorDetails = JSON.parse(errorBody).error.message;
+                        } catch(e) {
+                           // Not a JSON error, use the text
+                        }
+                        throw new Error(`HTTP error! status: ${response.status}. Details: ${errorDetails}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    if (retries > 0) {
+                        // Network error or server error, wait and retry
+                        await new Promise(res => setTimeout(res, delay));
+                        return fetchWithBackoff(url, payload, retries - 1, delay * 2);
+                    }
+                    throw error; // Max retries reached
+                }
+            }
+
+            /**
+             * Sets the loading state of the UI.
+             */
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    generateButton.disabled = true;
+                    buttonText.textContent = 'Forging...';
+                    loader.classList.remove('hidden');
+                    resultContainer.classList.add('hidden');
+                    
+                    // Reset image view
+                    imageView.classList.add('hidden');
+                    projectImage.classList.add('hidden');
+                    projectImage.src = ''; // Clear src to stop any previous loading
+                } else {
+                    generateButton.disabled = false;
+                    buttonText.textContent = 'Forge Project';
+                    loader.classList.add('hidden');
+                }
+            }
+
+        /**
+         * A simple regex-based syntax highlighter for Java.
+         */
+        function simpleJavaSyntaxHighlight(code) {
+            // Escape HTML
+            let highlightedCode = code
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            
+            // Comments (/* ... */)
+            highlightedCode = highlightedCode.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="code-comment">$1</span>');
+            
+            // Comments (// ...)
+            highlightedCode = highlightedCode.replace(/(\/\/[^\n]*)/g, '<span class="code-comment">$1</span>');
+            
+            // Strings
+            highlightedCode = highlightedCode.replace(/(".*?")/g, '<span class="code-string">$1</span>');
+            
+            // Keywords
+            const keywords = [
+                'public', 'private', 'protected', 'class', 'interface', 'enum', 'static', 'final', 'abstract',
+                'void', 'int', 'double', 'float', 'long', 'short', 'byte', 'boolean', 'char', 'new', 'return',
+                'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'try', 'catch',
+                'finally', 'throw', 'throws', 'import', 'package', 'extends', 'implements', 'super', 'this'
+            ];
+            highlightedCode = highlightedCode.replace(new RegExp(`\\b(${keywords.join('|')})\\b`, 'g'), '<span class="code-keyword">$1</span>');
+            
+            // Class names (heuristic: words starting with uppercase, like String, System, Integer)
+            highlightedCode = highlightedCode.replace(/\b([A-Z][a-zA-Z0-9_]*)\b/g, '<span class="code-class">$1</span>');
+            
+            // Annotations
+            highlightedCode = highlightedCode.replace(/(@[A-Z][a-zA-Z0-9_]*)/g, '<span class="code-annotation">$1</span>');
+            
+            // Numbers
+            highlightedCode = highlightedCode.replace(/(\b\d+\.?\d*[dfL]?\b)/g, '<span class="code-number">$1</span>');
+
+            // Method names (heuristic: word followed by '(', not a keyword)
+            highlightedCode = highlightedCode.replace(/([a-zA-Z0-9_]+)\s*(?=\()/g, (match, p1) => {
+                if (keywords.includes(p1) || p1.match(/^[A-Z]/)) {
+                    return match; // It's a keyword or class, not a method
+                }
+                return `<span class="code-method">${p1}</span>`;
+            });
+
+            return highlightedCode;
+        }
+
+            /**
+             * Handles copying the generated code to the clipboard.
+             */
+            function handleCopyClick() {
+                const rawCode = codeOutput.textContent;
+                
+                // Use the clipboard fallback for iframe compatibility
+                const tempTextarea = document.createElement('textarea');
+                tempTextarea.value = rawCode;
+                document.body.appendChild(tempTextarea);
+                tempTextarea.select();
+                try {
+                    document.execCommand('copy');
+                    // Show "Copied!" message
+                    copiedMessage.classList.add('visible');
+                    setTimeout(() => {
+                        copiedMessage.classList.remove('visible');
+                    }, 2000);
+                } catch (err) {
+                    // console.error('Failed to copy code: ', err);
+                }
+                document.body.removeChild(tempTextarea);
+            }
+        });
+    </script>
+</body>
+</html>

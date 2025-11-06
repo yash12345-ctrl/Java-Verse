@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Local Chat - Ollama UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Reset & Basic Setup --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html {
+            /* Smooth scrolling for chat */
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0D1117; /* GitHub dark background */
+            color: #C9D1D9; /* GitHub dark text */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 14px 20px;
+            background: #161B22; /* Darker background */
+            border-bottom: 1px solid #30363D;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0; /* Prevent header from shrinking */
+        }
+
+        header h1 { 
+            font-size: 18px; 
+            font-weight: 600;
+        }
+        
+        /* Updated to use the input from your original code */
+        header input {
+            background: #30363D;
+            border: 1px solid #484F58;
+            color: #C9D1D9;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Roboto Mono', monospace;
+            width: 130px;
+            transition: border .3s, box-shadow .3s;
+        }
+        header input:focus {
+            border-color: #58A6FF;
+            box-shadow: 0 0 0 3px #58A6FF33;
+            outline: none;
+        }
+
+        /* --- Chat Container --- */
+        /* This is the ID from your original JS */
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        /* Custom scrollbar */
+        #chat::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat::-webkit-scrollbar-track {
+            background: #161B22;
+        }
+        #chat::-webkit-scrollbar-thumb {
+            background: #30363D;
+            border-radius: 4px;
+        }
+
+        /* --- Message Bubbles --- */
+        /* This is the class from your original JS */
+        .msg {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.6;
+            font-size: 15px;
+            animation: fadeIn .3s ease-out;
+            /* Allow text selection */
+            user-select: text; 
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Class from your original JS */
+        .me {
+            background: #0D4488; /* A richer blue */
+            color: #FFFFFF;
+            align-self: flex-end; /* Aligns to the right */
+            border-bottom-right-radius: 6px; /* Chat bubble tail */
+        }
+
+        /* Class from your original JS */
+        .ai {
+            background: #21262D; /* GitHub dark component */
+            color: #C9D1D9;
+            border: 1px solid #30363D;
+            align-self: flex-start; /* Aligns to the left */
+            border-bottom-left-radius: 6px; /* Chat bubble tail */
+        }
+        
+        /* --- ### KEY FIX: Code Block Styling ### --- */
+        /* These styles will apply to the <pre><code> 
+           tags our new JS creates */
+        .ai p {
+            /* Add spacing between paragraphs */
+            margin-bottom: 0.5em; 
+        }
+        .ai p:last-child {
+            margin-bottom: 0;
+        }
+
+        .ai pre {
+            background: #010409; /* Even darker for code */
+            border: 1px solid #30363D;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto; /* Allow horizontal scrolling */
+            margin-top: 12px;
+            margin-bottom: 8px;
+            font-size: 14px; 
+        }
+        
+        .ai code {
+            font-family: 'Roboto Mono', monospace; /* Monospace for code */
+            color: #C9D1D9;
+            white-space: pre; /* Preserve whitespace and newlines */
+        }
+
+        /* --- Input Bar --- */
+        /* This is the ID from your original HTML */
+        #input-area {
+            display: flex;
+            padding: 16px;
+            border-top: 1px solid #30363D;
+            background: #161B22;
+            gap: 12px;
+            flex-shrink: 0; /* Prevent input area from shrinking */
+        }
+
+        /* ID from your original HTML */
+        #msg {
+            flex: 1;
+            padding: 12px 16px;
+            font-size: 15px;
+            border-radius: 10px;
+            border: 1px solid #30363D;
+            background: #0D1117;
+            color: #C9D1D9;
+            resize: none;
+            font-family: 'Inter', sans-serif;
+            transition: border .3s, box-shadow .3s;
+            max-height: 150px; /* Limit height */
+            overflow-y: auto; /* Add scrollbar if it gets too tall */
+        }
+        
+        #msg:focus {
+            border-color: #58A6FF;
+            box-shadow: 0 0 0 3px #58A6FF33;
+            outline: none;
+        }
+        
+        /* ID from your original HTML */
+        #send {
+            padding: 0 22px; /* Original padding */
+            border-radius: 10px;
+            border: none;
+            background: #238636; /* GitHub green */
+            color: white;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background .2s;
+        }
+        #send:hover {
+            background: #2EA043;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Java GPT</h1>
+    <input id="model" value="phi3" />
+</header>
+
+<div id="chat"></div>
+
+<div id="input-area">
+    <textarea id="msg" rows="1" placeholder="Type your message..."></textarea>
+    <button id="send">Send</button>
+</div>
+
+<script>
+    // --- YOUR ORIGINAL JAVASCRIPT ELEMENTS ---
+    const chat = document.getElementById("chat");
+    const sendBtn = document.getElementById("send");
+    const msgInput = document.getElementById("msg");
+    const modelInput = document.getElementById("model");
+
+    /**
+     * NEW, FIXED FUNCTION: updateMessage
+     * This function parses the text and safely adds HTML for code blocks.
+     * It can be used to fill a *new* bubble or *update* an existing one.
+     */
+    function updateMessage(element, newText) {
+        // Clear existing content (e.g., "Thinking...")
+        element.innerHTML = ""; 
+
+        // Handle code blocks using a Regex split
+        // This splits the text by code blocks, e.g., ["text before", "```code block```", "text after"]
+        const parts = newText.split(/(```(?:\w*\n)[\s\S]*?```)/);
+        
+        for (const part of parts) {
+            if (part.startsWith("```")) {
+                // This is a code block
+                // Extract language and code
+                const codeMatch = part.match(/```(\w*)\n([\s\S]*?)```/); 
+                if (codeMatch && codeMatch[2]) {
+                    const lang = codeMatch[1];
+                    const code = codeMatch[2];
+                    
+                    const pre = document.createElement('pre');
+                    const codeEl = document.createElement('code');
+                    
+                    if (lang) {
+                        // Adds class like "language-java" for potential syntax highlighters
+                        codeEl.className = `language-${lang}`;
+                    }
+                    
+                    codeEl.textContent = code; // Safely sets the code text
+                    pre.appendChild(codeEl);
+                    element.appendChild(pre);
+                }
+            } else if (part.trim() !== "") {
+                // This is regular text
+                const p = document.createElement('p');
+                p.textContent = part;
+                element.appendChild(p);
+            }
+        }
+        
+        // Ensure the chat scrolls to the new message
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    /**
+     * MODIFIED FUNCTION: addMessage
+     * This now creates the bubble and uses updateMessage to fill it.
+     */
+    function addMessage(text, cls) {
+        const div = document.createElement("div");
+        div.className = "msg " + cls; // Uses your original .msg, .me, .ai classes
+        
+        // Use the new updateMessage function to handle content
+        updateMessage(div, text); 
+
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    /**
+     * MODIFIED FUNCTION: sendMessage
+     * This is your original function, but now it correctly updates
+     * the "Thinking..." bubble with the formatted response.
+     */
+    async function sendMessage() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+
+        addMessage(text, "me");
+        msgInput.value = "";
+        // Auto-resize textarea back to 1 row
+        msgInput.style.height = 'auto'; 
+
+        addMessage("Thinking...", "ai");
+        // Get the "Thinking..." bubble we just created
+        const thinkingBubble = chat.lastChild; 
+
+        const model = modelInput.value.trim() || "phi3"; // Default to phi3 as seen in screenshot
+
+        try {
+            const response = await fetch("/ask-ollama", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: text, model })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const answer = data.answer || "⚠ No response";
+
+            // **THE MAIN FIX**: 
+            // Instead of .textContent, use updateMessage to replace
+            // "Thinking..." with the real, formatted answer.
+            updateMessage(thinkingBubble, answer);
+
+        } catch (error) {
+            console.error("Error fetching response:", error);
+            // Also use updateMessage for errors
+            updateMessage(thinkingBubble, `⚠ Error: ${error.message}. Is Ollama running?`);
+        }
+    }
+
+    // --- YOUR ORIGINAL EVENT LISTENERS ---
+    sendBtn.onclick = sendMessage;
+    
+    msgInput.addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // --- NEW: Auto-resizing textarea ---
+    msgInput.addEventListener('input', () => {
+        msgInput.style.height = 'auto'; // Reset height
+        msgInput.style.height = (msgInput.scrollHeight) + 'px'; // Set to new scroll height
+    });
+
+</script>
+
+</body>
+</html>

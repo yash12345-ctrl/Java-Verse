@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Syntax Duel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Fira+Code&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #010409;
+            --primary-color: #39D353; /* Green */
+            --secondary-color: #F778BA; /* Pink */
+            --accent-color: #A5D6FF; /* Blue */
+            --text-color: #C9D1D9;
+            --danger-color: #FF4141;
+            --font-main: 'Orbitron', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .game-wrapper {
+            width: 1200px;
+            height: 700px;
+            background: #0D1117;
+            border: 3px solid var(--primary-color);
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(57, 211, 83, 0.5), inset 0 0 20px rgba(57, 211, 83, 0.2);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            position: relative;
+        }
+
+        #duel-panels {
+            display: flex;
+            justify-content: space-between;
+            flex-grow: 1;
+        }
+
+        .player-panel {
+            width: 48%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid;
+            border-radius: 10px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        #player-panel {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(57, 211, 83, 0.3);
+        }
+
+        #opponent-panel {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 15px rgba(247, 120, 186, 0.3);
+        }
+
+        .player-name {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 8px;
+        }
+        #player-name { color: var(--primary-color); }
+        #opponent-name { color: var(--secondary-color); }
+
+        .stat-bar-container {
+            width: 90%;
+            margin-bottom: 15px;
+        }
+        .stat-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-code);
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        .stat-bar {
+            height: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            border: 1px solid;
+            overflow: hidden;
+        }
+        .stat-bar-inner {
+            height: 100%;
+            width: 100%;
+            border-radius: 8px;
+            transition: width 0.3s ease-out;
+        }
+        #player-hp-bar { border-color: var(--primary-color); }
+        #player-hp-inner { background: var(--primary-color); }
+        #player-energy-bar { border-color: var(--accent-color); }
+        #player-energy-inner { background: var(--accent-color); }
+        #opponent-hp-bar { border-color: var(--secondary-color); }
+        #opponent-hp-inner { background: var(--secondary-color); }
+        #opponent-energy-bar { border-color: var(--accent-color); }
+        #opponent-energy-inner { background: var(--accent-color); }
+        
+        #avatar {
+            margin-top: 20px;
+            font-size: 7em;
+            filter: drop-shadow(0 0 10px);
+        }
+        #player-avatar { color: var(--primary-color); }
+        #opponent-avatar { color: var(--secondary-color); }
+        #player-shield, #opponent-shield {
+            position: absolute;
+            font-size: 10em;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        #game-interface {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 15px;
+        }
+        #challenge-prompt {
+            background: rgba(165, 214, 255, 0.1);
+            border: 1px solid var(--accent-color);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: var(--font-code);
+            font-size: 1.1em;
+            width: 80%;
+            text-align: center;
+            min-height: 40px;
+        }
+        #code-input {
+            width: 80%;
+            height: 80px;
+            margin-top: 10px;
+            background: #010409;
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-family: var(--font-code);
+            font-size: 1.2em;
+            padding: 10px;
+            resize: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #code-input:focus {
+            outline: none;
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+        #code-input.error {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 15px var(--danger-color);
+        }
+
+        #cast-button {
+            margin-top: 10px;
+            padding: 12px 30px;
+            font-family: var(--font-main);
+            font-size: 1.2em;
+            background: var(--primary-color);
+            color: var(--bg-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+        #cast-button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #game-log {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 400px;
+            height: 150px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: scroll;
+            font-family: var(--font-code);
+            font-size: 0.9em;
+        }
+        .log-message {
+            margin-bottom: 5px;
+            animation: slideIn 0.3s forwards;
+        }
+        .player-log { color: var(--primary-color); }
+        .opponent-log { color: var(--secondary-color); }
+        .system-log { color: var(--accent-color); }
+        .error-log { color: var(--danger-color); font-weight: bold; }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(1, 4, 9, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-radius: 12px;
+            z-index: 100;
+        }
+        .overlay h2 {
+            font-size: 4em;
+            margin-bottom: 25px;
+            text-shadow: 0 0 15px;
+        }
+        .overlay button {
+            padding: 18px 35px;
+            font-size: 1.2em;
+            font-family: var(--font-main);
+            border: none; border-radius: 8px; cursor: pointer;
+            margin-top: 30px; transition: all 0.3s;
+        }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper" class="game-wrapper">
+        <div id="duel-panels">
+            <div id="player-panel" class="player-panel">
+                <div id="player-name" class="player-name">SYNTAX_WEAVER</div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar-label"><span>HP</span><span id="player-hp-value">100/100</span></div>
+                    <div id="player-hp-bar" class="stat-bar"><div id="player-hp-inner" class="stat-bar-inner"></div></div>
+                </div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar-label"><span>Energy</span><span id="player-energy-value">0/100</span></div>
+                    <div id="player-energy-bar" class="stat-bar"><div id="player-energy-inner" class="stat-bar-inner" style="width:0%"></div></div>
+                </div>
+                <div id="player-avatar" class="avatar">👨‍💻<div id="player-shield">🛡️</div></div>
+            </div>
+            <div id="opponent-panel" class="player-panel">
+                <div id="opponent-name" class="player-name">BYTE_BRAWLER</div>
+                <div class="stat-bar-container">
+                    <div class="stat-bar-label"><span>HP</span><span id="opponent-hp-value">100/100</span></div>
+                    <div id="opponent-hp-bar" class="stat-bar"><div id="opponent-hp-inner" class="stat-bar-inner"></div></div>
+                </div>
+                 <div class="stat-bar-container">
+                    <div class="stat-bar-label"><span>Energy</span><span id="opponent-energy-value">0/100</span></div>
+                    <div id="opponent-energy-bar" class="stat-bar"><div id="opponent-energy-inner" class="stat-bar-inner" style="width:0%"></div></div>
+                </div>
+                <div id="opponent-avatar" class="avatar">🤖<div id="opponent-shield">🛡️</div></div>
+            </div>
+        </div>
+
+        <div id="game-interface">
+            <div id="challenge-prompt">Initializing duel sequence...</div>
+            <textarea id="code-input" spellcheck="false"></textarea>
+            <button id="cast-button">CAST SPELL</button>
+        </div>
+
+        <div id="game-log"></div>
+
+        <div id="startScreen" class="overlay">
+            <h2 style="color:var(--primary-color)">Java Syntax Duel</h2>
+            <p>Write valid Java code to attack your opponent.</p>
+            <p>Mistakes will cost you. Build energy for powerful spells.</p>
+            <button id="startButton" style="background:var(--primary-color); color:var(--bg-color)">Start Duel</button>
+        </div>
+        
+        <div id="gameOverScreen" class="overlay" style="display: none;">
+            <h2 id="gameOverTitle"></h2>
+            <button id="restartButton" style="background:var(--accent-color); color:var(--bg-color)">New Duel</button>
+        </div>
+    </div>
+
+<script>
+// Regex patterns are now more flexible about spacing.
+const SPELLS = [
+    // Tier 1
+    { name: "Int Declaration", prompt: "Declare an integer `level` with a value of 10.", regex: /^int\s+level\s*=\s*10;?$/, damage: 10, energyCost: 0, energyGain: 20 },
+    { name: "String Declaration", prompt: "Declare a String `name` with the value 'Player'.", regex: /^String\s+name\s*=\s*"Player";?$/, damage: 12, energyCost: 0, energyGain: 20 },
+    { name: "Boolean Declaration", prompt: "Declare a boolean `isActive` and set it to true.", regex: /^boolean\s+isActive\s*=\s*true;?$/, damage: 10, energyCost: 0, energyGain: 20 },
+    
+    // Tier 2
+    { name: "If Statement", prompt: "Write an if statement that checks if `level` is greater than 5.", regex: /^if\s*\(\s*level\s*>\s*5\s*\)\s*\{.*\}$/, damage: 20, energyCost: 15, energyGain: 25 },
+    { name: "Simple For Loop", prompt: "Write a for loop that counts from 0 up to (not including) 5.", regex: /^for\s*\(\s*int\s+i\s*=\s*0\s*;\s*i\s*<\s*5\s*;\s*i\+\+\s*\)\s*\{.*\}$/, damage: 25, energyCost: 20, energyGain: 30 },
+
+    // Tier 3
+    { name: "Method Signature", prompt: "Declare a public method `getScore` that returns an int.", regex: /^public\s+int\s+getScore\s*\(\s*\)\s*\{.*\}$/, damage: 35, energyCost: 40, energyGain: 15 },
+    { name: "System.out.println", prompt: "Print the string 'Hello, Duel!' to the console.", regex: /^System\.out\.println\s*\(\s*"Hello,\s*Duel!"\s*\);?$/, damage: 30, energyCost: 30, energyGain: 20 },
+
+    // Defensive
+    { name: "Shield Block", prompt: "Create an if-else statement checking if `energy` is greater than 50.", regex: /^if\s*\(\s*energy\s*>\s*50\s*\)\s*\{.*\}\s*else\s*\{.*\}$/, damage: 0, energyCost: 25, energyGain: 10, shield: 25 }
+];
+
+// --- DOM Elements ---
+const ui = {
+    player: {
+        panel: document.getElementById('player-panel'),
+        name: document.getElementById('player-name'),
+        hpValue: document.getElementById('player-hp-value'),
+        hpInner: document.getElementById('player-hp-inner'),
+        energyValue: document.getElementById('player-energy-value'),
+        energyInner: document.getElementById('player-energy-inner'),
+        shield: document.getElementById('player-shield')
+    },
+    opponent: {
+        panel: document.getElementById('opponent-panel'),
+        name: document.getElementById('opponent-name'),
+        hpValue: document.getElementById('opponent-hp-value'),
+        hpInner: document.getElementById('opponent-hp-inner'),
+        energyValue: document.getElementById('opponent-energy-value'),
+        energyInner: document.getElementById('opponent-energy-inner'),
+        shield: document.getElementById('opponent-shield')
+    },
+    challengePrompt: document.getElementById('challenge-prompt'),
+    codeInput: document.getElementById('code-input'),
+    castButton: document.getElementById('cast-button'),
+    gameLog: document.getElementById('game-log'),
+    startScreen: document.getElementById('startScreen'),
+    gameOverScreen: document.getElementById('gameOverScreen'),
+    gameOverTitle: document.getElementById('gameOverTitle'),
+    startButton: document.getElementById('startButton'),
+    restartButton: document.getElementById('restartButton'),
+};
+
+let state;
+
+function init() {
+    state = {
+        player: { hp: 100, energy: 0, shield: 0 },
+        opponent: { hp: 100, energy: 0, shield: 0 },
+        currentSpell: null,
+        turn: 'player',
+        gameOver: false
+    };
+    ui.gameOverScreen.style.display = 'none';
+    ui.startScreen.style.display = 'flex';
+    ui.gameLog.innerHTML = '';
+    updateHUD();
+}
+
+function startGame() {
+    init();
+    ui.startScreen.style.display = 'none';
+    logMessage('Duel begins!', 'system');
+    nextTurn();
+}
+
+function nextTurn() {
+    if (state.gameOver) return;
+    ui.codeInput.value = '';
+    
+    state.turn = state.turn === 'player' ? 'opponent' : 'player';
+
+    if (state.turn === 'player') {
+        let availableSpells = SPELLS.filter(spell => state.player.energy >= spell.energyCost);
+        if (availableSpells.length === 0) availableSpells = SPELLS.filter(s => s.energyCost === 0);
+        state.currentSpell = availableSpells[Math.floor(Math.random() * availableSpells.length)];
+        
+        ui.challengePrompt.textContent = state.currentSpell.prompt;
+        ui.codeInput.disabled = false;
+        ui.castButton.disabled = false;
+        ui.codeInput.focus();
+    } else {
+        ui.challengePrompt.textContent = "Opponent is casting...";
+        ui.codeInput.disabled = true;
+        ui.castButton.disabled = true;
+        setTimeout(opponentTurn, 1500); // Faster AI turn
+    }
+}
+
+function playerTurn() {
+    // Normalize code: remove extra whitespace and make it one line for easier regex matching
+    const code = ui.codeInput.value.replace(/\s+/g, ' ').trim();
+    const spell = state.currentSpell;
+    
+    // Use the RegExp object to test, ignoring case for keywords for more forgiveness
+    const finalRegex = new RegExp(spell.regex.source.replace(/\\s\*/g, ' *').replace(/\\s\+/g, ' +'), 'i');
+
+    if (finalRegex.test(code)) {
+        // SUCCESS
+        logMessage(`You cast ${spell.name}!`, 'player');
+        
+        let totalDamage = spell.damage;
+        if (state.opponent.shield > 0) {
+            const blocked = Math.min(state.opponent.shield, totalDamage);
+            totalDamage -= blocked;
+            state.opponent.shield -= blocked;
+            logMessage(`Opponent's shield blocked ${blocked} damage!`, 'system');
+        }
+        
+        state.opponent.hp -= totalDamage;
+        state.player.energy = Math.min(100, state.player.energy - spell.energyCost + spell.energyGain);
+        
+        if (spell.shield) {
+            state.player.shield = Math.min(100, state.player.shield + spell.shield);
+            logMessage(`You gained ${spell.shield} shield!`, 'player');
+        }
+        createParticles(ui.opponent.panel);
+    } else {
+        // FAILURE
+        logMessage('Syntax Error! Spell backfired!', 'error');
+        state.player.hp -= 5; // Reduced backfire damage
+        screenShake(ui.player.panel);
+        ui.codeInput.classList.add('error');
+        setTimeout(() => ui.codeInput.classList.remove('error'), 500);
+    }
+    
+    updateHUD();
+    checkGameOver();
+    if (!state.gameOver) nextTurn();
+}
+
+function opponentTurn() {
+    let availableSpells = SPELLS.filter(spell => state.opponent.energy >= spell.energyCost);
+    if (availableSpells.length === 0) availableSpells = SPELLS.filter(s => s.energyCost === 0);
+    const spell = availableSpells[Math.floor(Math.random() * availableSpells.length)];
+
+    if (Math.random() < 0.85) { // 85% success chance
+        logMessage(`Opponent casts ${spell.name}!`, 'opponent');
+        
+        let totalDamage = spell.damage;
+        if (state.player.shield > 0) {
+            const blocked = Math.min(state.player.shield, totalDamage);
+            totalDamage -= blocked;
+            state.player.shield -= blocked;
+            logMessage(`Your shield blocked ${blocked} damage!`, 'system');
+        }
+
+        state.player.hp -= totalDamage;
+        state.opponent.energy = Math.min(100, state.opponent.energy - spell.energyCost + spell.energyGain);
+
+        if (spell.shield) {
+            state.opponent.shield = Math.min(100, state.opponent.shield + spell.shield);
+            logMessage(`Opponent gained ${spell.shield} shield!`, 'opponent');
+        }
+        screenShake(ui.player.panel);
+    } else {
+        logMessage('Opponent made a Syntax Error!', 'opponent');
+        state.opponent.hp -= 5;
+        createParticles(ui.opponent.panel, true);
+    }
+    
+    updateHUD();
+    checkGameOver();
+    if (!state.gameOver) nextTurn();
+}
+
+function updateHUD() {
+    state.player.hp = Math.max(0, state.player.hp);
+    ui.player.hpValue.textContent = `${state.player.hp}/100`;
+    ui.player.hpInner.style.width = `${state.player.hp}%`;
+    ui.player.energyValue.textContent = `${state.player.energy}/100`;
+    ui.player.energyInner.style.width = `${state.player.energy}%`;
+    ui.player.shield.style.opacity = state.player.shield > 0 ? '0.7' : '0';
+
+    state.opponent.hp = Math.max(0, state.opponent.hp);
+    ui.opponent.hpValue.textContent = `${state.opponent.hp}/100`;
+    ui.opponent.hpInner.style.width = `${state.opponent.hp}%`;
+    ui.opponent.energyValue.textContent = `${state.opponent.energy}/100`;
+    ui.opponent.energyInner.style.width = `${state.opponent.energy}%`;
+    ui.opponent.shield.style.opacity = state.opponent.shield > 0 ? '0.7' : '0';
+}
+
+function checkGameOver() {
+    if (state.player.hp <= 0) endGame('You have been defeated!');
+    else if (state.opponent.hp <= 0) endGame('Victory!');
+}
+
+function endGame(message) {
+    state.gameOver = true;
+    ui.gameOverScreen.style.display = 'flex';
+    ui.gameOverTitle.textContent = message;
+    ui.gameOverTitle.style.color = message === 'Victory!' ? 'var(--primary-color)' : 'var(--danger-color)';
+    ui.castButton.disabled = true;
+    ui.codeInput.disabled = true;
+}
+
+function logMessage(msg, type) {
+    const p = document.createElement('p');
+    p.textContent = `> ${msg}`;
+    p.className = `log-message ${type}-log`;
+    ui.gameLog.appendChild(p);
+    ui.gameLog.scrollTop = ui.gameLog.scrollHeight;
+}
+
+function screenShake(element) {
+    element.style.animation = 'shake 0.5s';
+    setTimeout(() => element.style.animation = '', 500);
+}
+
+function createParticles(targetPanel) {
+    const rect = targetPanel.getBoundingClientRect();
+    for (let i = 0; i < 20; i++) {
+        const p = document.createElement('div');
+        p.style.position = 'absolute';
+        p.style.width = `${Math.random() * 5 + 2}px`;
+        p.style.height = p.style.width;
+        p.style.background = targetPanel === ui.player.panel ? 'var(--primary-color)' : 'var(--secondary-color)';
+        p.style.left = `${rect.left + rect.width / 2}px`;
+        p.style.top = `${rect.top + rect.height / 2}px`;
+        p.style.transition = 'all 0.5s ease-out';
+        p.style.zIndex = '200';
+        document.body.appendChild(p);
+
+        setTimeout(() => {
+            const x = (Math.random() - 0.5) * 200;
+            const y = (Math.random() - 0.5) * 200;
+            p.style.transform = `translate(${x}px, ${y}px)`;
+            p.style.opacity = 0;
+        }, 10);
+        setTimeout(() => document.body.removeChild(p), 510);
+    }
+}
+
+ui.startButton.addEventListener('click', startGame);
+ui.restartButton.addEventListener('click', startGame);
+ui.castButton.addEventListener('click', playerTurn);
+ui.codeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!ui.castButton.disabled) ui.castButton.click();
+    }
+});
+
+init();
+</script>
+</body>
+</html>
