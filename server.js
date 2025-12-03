@@ -101,9 +101,7 @@ app.post('/ask-gemini', async (req, res) => {
   }
 });
 
-// ==================================
-// 🎨 NEW: Gemini Image/Text Generator
-// ==================================
+
 app.post('/api/generate', async (req, res) => {
   const { prompt } = req.body;
 
@@ -150,13 +148,11 @@ app.post('/api/generate', async (req, res) => {
 });
 
 
-// =======================
-// ✅ ✅ ✅ OLLAMA BACKEND ADDED HERE
-// =======================
+
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
 
-// Send single message to Ollama (like ChatGPT)
+
 app.post('/ask-ollama', async (req, res) => {
   const { prompt, model = "phi3" } = req.body;
 
